@@ -7,7 +7,8 @@ For logs and long text you want an AI coding agent to read.
 
 ## Requirements
 
-macOS. Uses Bash and commands included with macOS. No network requests.
+macOS. Uses Bash and commands included with macOS.
+The installer downloads from GitHub. The installed command makes no network requests.
 
 ## Install
 
@@ -22,6 +23,24 @@ your `PATH`, add this line to `~/.zshrc` and open a new terminal:
 ```sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+Check the installation in the new terminal:
+
+```sh
+clipref --version
+clipref --help
+```
+
+The installer sets executable permissions. No separate `chmod` step is needed.
+
+### Choose an install directory
+
+```sh
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
+```
+
+Add the chosen directory to your `PATH` if needed.
+`--bin-dir` sets where the command is installed; `clipref --dir` sets where text is saved.
 
 ### From source
 
