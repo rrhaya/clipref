@@ -7,7 +7,8 @@
 
 ## 動作環境
 
-macOS。BashとmacOS標準コマンドを使います。ネット通信は行いません。
+macOS。BashとmacOS標準コマンドを使います。
+インストーラーはGitHubからダウンロードします。インストール後のコマンドはネット通信を行いません。
 
 ## インストール
 
@@ -22,6 +23,24 @@ bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref
 ```sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+新しいターミナルでインストールを確認します。
+
+```sh
+clipref --version
+clipref --help
+```
+
+実行権限はインストーラーが設定します。別途`chmod`する必要はありません。
+
+### インストール先を変更
+
+```sh
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
+```
+
+必要に応じて、指定したディレクトリを`PATH`に追加してください。
+`--bin-dir`はコマンドのインストール先、`clipref --dir`はテキストの保存先を指定します。
 
 ### ソースからインストール
 
@@ -77,11 +96,35 @@ your-command 2>&1 | clipref     # コマンド出力を保存
 clipref --no-copy               # クリップボードを変更せず、パスを表示
 ```
 
-パイプ入力がある場合は、クリップボードより優先します。拡張子の初期値は`txt`です。
+パイプ入力がある場合は、クリップボードより優先します。`clipref --clipboard`で
+入力元を明示すると、ランチャーやショートカットからもクリップボードを読めます。
+この場合、標準入力は読みません。このオプションはv0.1.0以降の開発ソースで利用できます。
+拡張子の初期値は`txt`です。
 拡張子の指定はファイル名だけを変えます。内容の変換は行いません。
+v0.1.0以降の開発ソースでは、`clipref --name startup-error.log`でファイル名を指定できます。
+空白や日本語も使えます。パス区切り・タブ・改行は使えません。`--name`と`--ext`は併用できません。
+`--name`を指定した場合は、設定ファイルの拡張子よりファイル名を優先します。
 入力の空白や改行はそのまま保存します。末尾に改行を追加しません。
 
+## 設定ファイル
+
+v0.1.0以降の開発ソースで利用できます。`~/.config/clipref/config`
+（`XDG_CONFIG_HOME`を指定した場合はその下の`clipref/config`）を作成します。
+
+```text
+dir=~/logs
+ext=log
+```
+
+保存先は先に作成してください。値に引用符は付けません。シェル式は実行せず、
+先頭の`~/`だけをホームディレクトリに置き換えます。保存先は絶対パスか`~/`で指定します。
+空行と`#`で始まる行は無視します。優先順位はCLI指定、設定ファイル、初期値の順です。
+未知のキー・重複したキー・不正な値はエラーになります。
+
 ## 保存ファイル
+
+キー操作で実行する場合は[macOSショートカットの設定手順](docs/shortcuts.ja.md)を参照してください。
+`--clipboard`に対応した開発版が必要です。
 
 実行ごとに、システムの一時ディレクトリまたは`--dir`で指定した場所に
 `clipref.XXXXXX`ディレクトリを作ります。ファイルは所有者だけが読み書きできます。
@@ -92,6 +135,26 @@ clipref --no-copy               # クリップボードを変更せず、パス�
 
 cliprefは保存ファイルを削除しません。システムの一時ファイルはOSによって削除される場合があります。
 残しておきたい場合や、エージェントのワークスペース内に置きたい場合は`--dir`を使ってください。
+
+## 履歴
+
+v0.1.0以降の開発ソースで利用できます。
+
+```sh
+clipref list --limit 10  # 直近のパスとexists/missingを表示
+clipref last            # 直近の保存パスを表示・コピー
+clipref last --no-copy  # クリップボードを変えずに表示
+```
+
+一覧のパスはシェル用に引用します。`last`は元の絶対パスをコピーします。
+直近のファイルが消えている場合は、別のファイルを選ばずエラーにします。
+記録ファイルの更新日時が新しい順に表示します。同時保存では順序が前後する場合があります。
+
+保存に成功するとパスだけを記録します。`--dir`で保存したファイルも対象です。
+記録は所有者だけがアクセスできる`~/.local/state/clipref/history`に置きます。
+`XDG_STATE_HOME`を指定した場合は、その下の`clipref/history`を使います。
+保存先の設定は履歴の場所には影響しません。消えたファイルも一覧に残り、自動削除はしません。
+記録に失敗しても保存ファイルは残り、パスのコピーを行って警告を表示します。
 
 ## エージェントへの渡し方
 
@@ -112,13 +175,17 @@ cliprefは保存ファイルを削除しません。システムの一時ファ�
 ```sh
 bash -n bin/clipref
 bash -n install.sh
+shellcheck --shell=bash bin/clipref install.sh
 python3 -m unittest discover -s tests -v
 ```
 
 テストはダミーのクリップボードコマンドを使います。実際のクリップボードにはアクセスしません。
 Python 3はテストにのみ必要です。
+ShellCheckは静的検査にのみ必要です。macOSでは`brew install shellcheck`で導入できます。
 
 GitHub Actionsでも、pushとpull request時にmacOS上で構文チェックとテストを実行します。
+ShellCheckで両BashスクリプトをUbuntu上で検査します。
+DependabotはGitHub Actionsの依存を確認し、週次で更新PRを作成します。
 
 ## 更新
 

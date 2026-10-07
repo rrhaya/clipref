@@ -7,7 +7,8 @@ For logs and long text you want an AI coding agent to read.
 
 ## Requirements
 
-macOS. Uses Bash and commands included with macOS. No network requests.
+macOS. Uses Bash and commands included with macOS.
+The installer downloads from GitHub. The installed command makes no network requests.
 
 ## Install
 
@@ -22,6 +23,24 @@ your `PATH`, add this line to `~/.zshrc` and open a new terminal:
 ```sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+Check the installation in the new terminal:
+
+```sh
+clipref --version
+clipref --help
+```
+
+The installer sets executable permissions. No separate `chmod` step is needed.
+
+### Choose an install directory
+
+```sh
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
+```
+
+Add the chosen directory to your `PATH` if needed.
+`--bin-dir` sets where the command is installed; `clipref --dir` sets where text is saved.
 
 ### From source
 
@@ -77,11 +96,37 @@ your-command 2>&1 | clipref     # Save command output
 clipref --no-copy               # Print the path without changing the clipboard
 ```
 
-Piped input takes precedence over the clipboard. The default extension is `txt`.
+Piped input takes precedence over the clipboard. Use `clipref --clipboard` to
+read the clipboard explicitly, including from launchers or Shortcuts. It ignores
+stdin. This option is available in the development source, after v0.1.0.
+The default extension is `txt`.
 Extensions change the filename only; they do not convert the content.
+In the development source after v0.1.0, use `clipref --name startup-error.log`
+to choose a filename. Names may contain spaces and Japanese characters, but must
+not contain path separators, tabs, or line breaks. `--name` and `--ext` cannot be combined.
+A filename supplied with `--name` takes precedence over the configured extension.
 Input is preserved without trimming or adding a newline.
 
+## Configuration
+
+Available in the development source after v0.1.0. Create
+`~/.config/clipref/config` (or `$XDG_CONFIG_HOME/clipref/config`):
+
+```text
+dir=~/logs
+ext=log
+```
+
+Create the save directory first. Values are literal text, without quotes or shell
+expansion; only a leading `~/` expands to your home directory. Blank lines and
+lines starting with `#` are ignored. Use an absolute directory path or `~/`.
+Command-line options override configuration, which overrides built-in defaults.
+Unknown keys, duplicate keys, and invalid values are errors.
+
 ## Files
+
+For keyboard access, see [macOS Shortcut setup](docs/shortcuts.md).
+Requires the development build with `--clipboard`.
 
 Each run creates a private `clipref.XXXXXX` directory in the system temp directory,
 or in the directory passed to `--dir`. Files are readable and writable only by
@@ -92,6 +137,26 @@ If copying the path fails, the file remains and its path is printed.
 
 clipref does not delete saved files. System temp files may be removed by the OS.
 Use `--dir` when you need to keep a file or place it inside an agent's workspace.
+
+## History
+
+Available in the development source after v0.1.0:
+
+```sh
+clipref list --limit 10  # Recent paths, marked exists or missing
+clipref last            # Print and copy the newest saved path
+clipref last --no-copy  # Print it without changing the clipboard
+```
+
+List output quotes paths for the shell. `last` copies the original absolute path.
+If the latest file is gone, `last` reports an error rather than selecting another file.
+History follows record modification times, newest first; simultaneous saves may tie.
+
+Each successful save records only its path, including saves with `--dir`.
+Records are private and stored in `~/.local/state/clipref/history`, or
+`$XDG_STATE_HOME/clipref/history` when set. Configuration defaults do not change
+the history location. Missing files remain listed; no files are deleted automatically.
+If recording history fails, the saved file and path copying still work and a warning is printed.
 
 ## Using it with an agent
 
@@ -112,13 +177,17 @@ then search for errors and read the surrounding lines as needed.
 ```sh
 bash -n bin/clipref
 bash -n install.sh
+shellcheck --shell=bash bin/clipref install.sh
 python3 -m unittest discover -s tests -v
 ```
 
 Tests use fake clipboard commands; they do not access the system clipboard.
 Python 3 is needed only for tests.
+ShellCheck is needed only for linting; on macOS, install it with `brew install shellcheck`.
 
 GitHub Actions runs the syntax check and tests on macOS for pushes and pull requests.
+ShellCheck checks both Bash scripts on Ubuntu. Dependabot opens weekly update PRs
+for GitHub Actions dependencies.
 
 ## Update
 
