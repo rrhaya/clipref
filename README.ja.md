@@ -175,13 +175,17 @@ clipref last --no-copy  # クリップボードを変えずに表示
 ```sh
 bash -n bin/clipref
 bash -n install.sh
+shellcheck --shell=bash bin/clipref install.sh
 python3 -m unittest discover -s tests -v
 ```
 
 テストはダミーのクリップボードコマンドを使います。実際のクリップボードにはアクセスしません。
 Python 3はテストにのみ必要です。
+ShellCheckは静的検査にのみ必要です。macOSでは`brew install shellcheck`で導入できます。
 
 GitHub Actionsでも、pushとpull request時にmacOS上で構文チェックとテストを実行します。
+ShellCheckで両BashスクリプトをUbuntu上で検査します。
+DependabotはGitHub Actionsの依存を確認し、週次で更新PRを作成します。
 
 ## 更新
 

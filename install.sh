@@ -58,6 +58,8 @@ case ":$PATH:" in
   *)
     printf 'Add this directory to PATH: %s\n' "$bin_dir"
     printf 'For the default directory, add to ~/.zshrc:\n'
+    # Print placeholders for the user to add to their shell configuration.
+    # shellcheck disable=SC2016
     printf '  export PATH="$HOME/.local/bin:$PATH"\n'
     ;;
 esac
