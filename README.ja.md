@@ -7,7 +7,8 @@
 
 ## 動作環境
 
-macOS。BashとmacOS標準コマンドを使います。ネット通信は行いません。
+macOS。BashとmacOS標準コマンドを使います。
+インストーラーはGitHubからダウンロードします。インストール後のコマンドはネット通信を行いません。
 
 ## インストール
 
@@ -22,6 +23,24 @@ bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref
 ```sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
+
+新しいターミナルでインストールを確認します。
+
+```sh
+clipref --version
+clipref --help
+```
+
+実行権限はインストーラーが設定します。別途`chmod`する必要はありません。
+
+### インストール先を変更
+
+```sh
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
+```
+
+必要に応じて、指定したディレクトリを`PATH`に追加してください。
+`--bin-dir`はコマンドのインストール先、`clipref --dir`はテキストの保存先を指定します。
 
 ### ソースからインストール
 
