@@ -31,6 +31,7 @@ extension=txt
 extension_explicit=false
 filename=
 name_explicit=false
+dir_explicit=false
 copy_path=true
 clipboard_input=false
 mode=save
@@ -44,7 +45,7 @@ while [ "$#" -gt 0 ]; do
       [ "$mode" = save ] || die 'save options cannot be used with history commands'
       [ "$#" -ge 2 ] || die "missing value for $1"
       case "$1" in
-        --dir) save_dir=$2 ;;
+        --dir) save_dir=$2; dir_explicit=true ;;
         --ext) extension=$2; extension_explicit=true ;;
         --name) filename=$2; name_explicit=true ;;
       esac
@@ -111,6 +112,48 @@ if [ "$mode" != save ]; then
   done < <(ls -t -- "${records[@]}")
   [ "$mode" = list ] && exit 0
   die 'history has no valid entries'
+fi
+# Configuration is literal key=value data, never shell code.
+config_path="${XDG_CONFIG_HOME:-$HOME/.config}/clipref/config"
+trim() {
+  local text=$1
+  text="${text#"${text%%[![:space:]]*}"}"
+  text="${text%"${text##*[![:space:]]}"}"
+  printf '%s' "$text"
+}
+if [ -e "$config_path" ]; then
+  [ -f "$config_path" ] && [ -r "$config_path" ] || die 'configuration is not a readable file'
+  config_dir_seen=false
+  config_ext_seen=false
+  line_number=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_number=$((line_number + 1))
+    line=$(trim "$line")
+    case "$line" in ''|\#*) continue ;; esac
+    case "$line" in *=*) ;; *) die "invalid configuration at line $line_number: expected key=value" ;; esac
+    key=$(trim "${line%%=*}")
+    value=$(trim "${line#*=}")
+    [ -n "$value" ] || die "empty configuration value at line $line_number"
+    case "$key" in
+      dir)
+        [ "$config_dir_seen" = false ] || die 'duplicate configuration key: dir'
+        config_dir_seen=true
+        case "$value" in
+          '~/'*) value="$HOME/${value#\~/}" ;;
+          /*) ;;
+          *) die 'configuration dir must be an absolute path or start with ~/' ;;
+        esac
+        if [ "$dir_explicit" = false ]; then save_dir=$value; fi
+        ;;
+      ext)
+        [ "$config_ext_seen" = false ] || die 'duplicate configuration key: ext'
+        config_ext_seen=true
+        case "$value" in ''|*[!a-zA-Z0-9_-]*) die 'invalid configuration extension' ;; esac
+        if [ "$extension_explicit" = false ]; then extension=$value; fi
+        ;;
+      *) die "unknown configuration key at line $line_number" ;;
+    esac
+  done < "$config_path"
 fi
 if [ "$name_explicit" = true ]; then
   [ "$extension_explicit" = false ] || die '--name and --ext cannot be combined'

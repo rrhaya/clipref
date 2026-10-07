@@ -24,6 +24,8 @@ class CliprefTests(unittest.TestCase):
         self.env.update(
             HOME=str(self.root / "home"),
             XDG_STATE_HOME=str(self.root / "state"),
+
+            XDG_CONFIG_HOME=str(self.root / "config"),
             PATH=f"{self.stubs}:/usr/bin:/bin",
             TMPDIR=str(self.save_dir),
             CLIPREF_TEST_CLIPBOARD=str(self.clipboard),
@@ -262,6 +264,47 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual({p.read_bytes() for p in history.glob("entry.*")},
                          {p + b"\0" for p in paths})
         self.assertEqual(list(history.glob(".pending.*")), [])
+
+    def write_config(self, content):
+        path = self.root / "config" / "clipref" / "config"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+
+    def test_config_defaults_and_cli_precedence(self):
+        target = self.root / "configured directory"
+        target.mkdir()
+        self.write_config(f"# defaults\ndir = {target}\next = log")
+        path = self.saved_path(self.run_cli())
+        self.assertEqual(path.parent.parent, target.resolve())
+        self.assertEqual(path.name, "input.log")
+        path = self.saved_path(self.run_cli("--dir", str(self.save_dir), "--ext", "txt"))
+        self.assertEqual(path.parent.parent, self.save_dir.resolve())
+        self.assertEqual(path.name, "input.txt")
+
+    def test_home_relative_config_and_fallback_location(self):
+        home = Path(self.env["HOME"])
+        (home / "logs").mkdir(parents=True)
+        self.write_config("dir=~/logs\next=log\n")
+        path = self.saved_path(self.run_cli())
+        self.assertEqual(path.parent.parent, (home / "logs").resolve())
+        self.env.pop("XDG_CONFIG_HOME")
+        config = home / ".config" / "clipref" / "config"
+        config.parent.mkdir(parents=True)
+        config.write_text("ext=md\n")
+        self.assertEqual(self.saved_path(self.run_cli()).name, "input.md")
+
+    def test_invalid_config_is_data_and_preserves_clipboard(self):
+        marker = self.root / "executed"
+        for content in ["unknown=x", "ext=", "ext=../log", "dir=relative", "ext=txt\next=log",
+                        "missing equals", f"ext=$(touch {marker})", f"ext=`touch {marker}`"]:
+            self.write_config(content)
+            result = self.run_cli()
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+            self.assertEqual(list(self.save_dir.iterdir()), [])
+            self.assertFalse(marker.exists())
+            self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
+        self.assertEqual(self.run_cli("--help").returncode, 0)
 
     def test_help_does_not_read_clipboard_or_create_files(self):
         self.stub("pbpaste", "exit 1")
