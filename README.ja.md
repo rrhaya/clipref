@@ -11,6 +11,20 @@ macOS。BashとmacOS標準コマンドを使います。ネット通信は行い
 
 ## インストール
 
+```sh
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash'
+```
+
+現在の`main`のコードを`~/.local/bin`にインストールします。更新も同じコマンドで行えます。
+シェルの設定ファイルは変更しません。`PATH`に登録されていない場合は、
+次の行を`~/.zshrc`に追加して、新しいターミナルを開いてください。
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### ソースからインストール
+
 1. ソースを取得します。
 
 ```sh
@@ -95,6 +109,7 @@ cliprefは保存ファイルを削除しません。システムの一時ファ�
 
 ```sh
 bash -n bin/clipref
+bash -n install.sh
 python3 -m unittest discover -s tests -v
 ```
 

@@ -1,0 +1,100 @@
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class InstallTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.stubs = self.root / "stubs"
+        self.stubs.mkdir()
+        self.target = self.root / "install directory" / "bin"
+        self.env = os.environ.copy()
+        self.env.update(PATH=f"{self.stubs}:/usr/bin:/bin",
+                        TMPDIR=str(self.root),
+                        CLIPREF_TEST_SOURCE=str(ROOT / "bin" / "clipref"))
+        self.stub("uname", "printf 'Darwin\\n'")
+        self.stub("curl", '''
+[ "$1" = -fsSL ] || exit 1
+[ "$2" = https://raw.githubusercontent.com/rrhaya/clipref/main/bin/clipref ] || exit 1
+[ "$3" = -o ] || exit 1
+cp "$CLIPREF_TEST_SOURCE" "$4"
+''')
+
+    def stub(self, name, body):
+        path = self.stubs / name
+        path.write_text("#!/bin/bash\n" + body + "\n")
+        path.chmod(0o755)
+
+    def run_install(self, *args):
+        return subprocess.run(["/bin/bash", str(ROOT / "install.sh"),
+                               "--bin-dir", str(self.target), *args],
+                              capture_output=True, env=self.env, timeout=5)
+
+    def assert_no_download_files(self):
+        self.assertEqual(list(self.root.glob("clipref-install.*")), [])
+
+    def test_installs_executable_and_cleans_download(self):
+        result = self.run_install()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        installed = self.target / "clipref"
+        self.assertEqual(installed.read_bytes(), (ROOT / "bin" / "clipref").read_bytes())
+        self.assertEqual(installed.stat().st_mode & 0o777, 0o755)
+        help_result = subprocess.run([str(installed), "--help"], capture_output=True, timeout=5)
+        self.assertEqual(help_result.returncode, 0)
+        self.assertIn(b"Usage: clipref", help_result.stdout)
+        self.assertIn(b"Add this directory to PATH", result.stdout)
+        self.assert_no_download_files()
+
+    def test_failed_download_keeps_existing_installation(self):
+        self.target.mkdir(parents=True)
+        installed = self.target / "clipref"
+        installed.write_bytes(b"existing installation")
+        self.stub("curl", "exit 22")
+        result = self.run_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(installed.read_bytes(), b"existing installation")
+        self.assertIn(b"download failed", result.stderr)
+        self.assert_no_download_files()
+
+    def test_rejects_empty_html_and_invalid_script(self):
+        for content in [b"", b"<html>not found</html>", b"#!/bin/bash\nif\n"]:
+            with self.subTest(content=content):
+                source = self.root / "invalid"
+                source.write_bytes(content)
+                self.env["CLIPREF_TEST_SOURCE"] = str(source)
+                result = self.run_install()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.target.exists())
+                self.assert_no_download_files()
+
+    def test_rejects_non_macos_before_download(self):
+        self.stub("uname", "printf 'Linux\\n'")
+        self.stub("curl", "exit 99")
+        result = self.run_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"macOS is required", result.stderr)
+        self.assertFalse(self.target.exists())
+        self.assert_no_download_files()
+
+    def test_help_has_no_side_effects(self):
+        result = self.run_install("--help")
+        self.assertEqual(result.returncode, 0)
+        self.assertIn(b"Usage:", result.stdout)
+        self.assertFalse(self.target.exists())
+        self.assert_no_download_files()
+
+    def test_rejects_invalid_options(self):
+        for args in [("--bin-dir",), ("--bin-dir", ""), ("--unknown",)]:
+            with self.subTest(args=args):
+                result = self.run_install(*args)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.target.exists())
+                self.assert_no_download_files()

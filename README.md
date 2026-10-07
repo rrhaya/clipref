@@ -11,6 +11,20 @@ macOS. Uses Bash and commands included with macOS. No network requests.
 
 ## Install
 
+```sh
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash'
+```
+
+Installs the current `main` version to `~/.local/bin`. Run the same command to update.
+The installer does not edit your shell configuration. If the directory is not in
+your `PATH`, add this line to `~/.zshrc` and open a new terminal:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### From source
+
 1. Get the source:
 
 ```sh
@@ -95,6 +109,7 @@ then search for errors and read the surrounding lines as needed.
 
 ```sh
 bash -n bin/clipref
+bash -n install.sh
 python3 -m unittest discover -s tests -v
 ```
 

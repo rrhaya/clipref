@@ -11,6 +11,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Check Bash syntax
-        run: /bin/bash -n bin/clipref
+        run: |
+          /bin/bash -n bin/clipref
+          /bin/bash -n install.sh
       - name: Run tests
         run: python3 -m unittest discover -s tests -v
