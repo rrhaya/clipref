@@ -86,6 +86,9 @@ Input is preserved without trimming or adding a newline.
 
 ## Files
 
+For keyboard access, see [macOS Shortcut setup](docs/shortcuts.md).
+Requires the development build with `--clipboard`.
+
 Each run creates a private `clipref.XXXXXX` directory in the system temp directory,
 or in the directory passed to `--dir`. Files are readable and writable only by
 their owner. Existing files are never overwritten.
