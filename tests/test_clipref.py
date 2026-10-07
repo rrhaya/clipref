@@ -103,6 +103,23 @@ class CliprefTests(unittest.TestCase):
         path = self.saved_path(self.run_cli("--dir", str(link)))
         self.assertEqual(path.parent.parent, self.save_dir.resolve())
 
+    def test_meaningful_names_preserve_contents_and_permissions(self):
+        for name in ["startup-error.log", "日本語 log.txt", "-leading.txt"]:
+            path = self.saved_path(self.run_cli("--name", name, data=b"named log"))
+            self.assertEqual(path.name, name)
+            self.assertEqual(path.read_bytes(), b"named log")
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_invalid_names_do_not_create_files(self):
+        for name in ["", ".", "..", "../log", "a/b", "a\\b", "a\nb", "a\rb", "a\tb"]:
+            result = self.run_cli("--name", name)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(list(self.save_dir.iterdir()), [])
+        result = self.run_cli("--name", "a.log", "--ext", "txt")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"cannot be combined", result.stderr)
+        self.assertEqual(list(self.save_dir.iterdir()), [])
+
     def test_runs_do_not_overwrite(self):
         first = self.saved_path(self.run_cli(data=b"first"))
         second = self.saved_path(self.run_cli(data=b"second"))

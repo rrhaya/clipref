@@ -4,13 +4,14 @@ version=0.1.0
 
 usage() {
   cat <<'EOF'
-Usage: clipref [--dir DIRECTORY] [--ext EXTENSION] [--no-copy]
+Usage: clipref [--dir DIRECTORY] [--ext EXTENSION | --name FILENAME] [--no-copy]
 
 Save clipboard text or piped input to a local file.
 Print its absolute path and copy the path to the clipboard.
 
   --dir DIRECTORY  Save in an existing directory (default: system temp directory)
   --ext EXTENSION  File extension, without a dot (default: txt)
+  --name FILENAME  Save with this basename instead of input.txt
   --no-copy        Print the path without changing the clipboard
   --version        Show version
   -h, --help       Show help
@@ -21,12 +22,19 @@ die() { printf 'clipref: %s\n' "$*" >&2; exit 1; }
 
 save_dir=${TMPDIR:-/tmp}
 extension=txt
+extension_explicit=false
+filename=
+name_explicit=false
 copy_path=true
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --dir|--ext)
+    --dir|--ext|--name)
       [ "$#" -ge 2 ] || die "missing value for $1"
-      if [ "$1" = --dir ]; then save_dir=$2; else extension=$2; fi
+      case "$1" in
+        --dir) save_dir=$2 ;;
+        --ext) extension=$2; extension_explicit=true ;;
+        --name) filename=$2; name_explicit=true ;;
+      esac
       shift 2
       ;;
     --no-copy) copy_path=false; shift ;;
@@ -37,13 +45,21 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "$(uname -s)" = Darwin ] || die 'macOS is required'
+if [ "$name_explicit" = true ]; then
+  [ "$extension_explicit" = false ] || die '--name and --ext cannot be combined'
+  case "$filename" in
+    ''|.|..|*/*|*\\*|*$'\n'*|*$'\r'*|*$'\t'*) die '--name must be a single filename without separators or line breaks' ;;
+  esac
+else
+  filename="input.$extension"
+fi
 case "$extension" in
   ''|*[!a-zA-Z0-9_-]*) die 'extension must contain only letters, numbers, underscores or hyphens' ;;
 esac
 save_dir=$(cd -- "$save_dir" 2>/dev/null && pwd -P) || die 'save directory does not exist or is inaccessible'
 umask 077
 item_dir=$(mktemp -d "$save_dir/clipref.XXXXXX") || die 'could not create a save directory'
-file_path="$item_dir/input.$extension"
+file_path="$item_dir/$filename"
 
 # Remove only an incomplete file and the directory created by this invocation.
 discard_incomplete() {

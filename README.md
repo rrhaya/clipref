@@ -79,6 +79,9 @@ clipref --no-copy               # Print the path without changing the clipboard
 
 Piped input takes precedence over the clipboard. The default extension is `txt`.
 Extensions change the filename only; they do not convert the content.
+In the development source after v0.1.0, use `clipref --name startup-error.log`
+to choose a filename. Names may contain spaces and Japanese characters, but must
+not contain path separators, tabs, or line breaks. `--name` and `--ext` cannot be combined.
 Input is preserved without trimming or adding a newline.
 
 ## Files
