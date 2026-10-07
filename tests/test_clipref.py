@@ -293,6 +293,33 @@ class CliprefTests(unittest.TestCase):
         config.write_text("ext=md\n")
         self.assertEqual(self.saved_path(self.run_cli()).name, "input.md")
 
+    def test_clipboard_name_config_and_history_work_together(self):
+        target = self.root / "configured directory"
+        target.mkdir()
+        self.write_config(f"dir={target}\next=log\n")
+        self.clipboard.write_bytes("日本語のログ\n\n".encode())
+        path = self.saved_path(self.run_cli("--clipboard", "--name", "startup error.txt",
+                                           "--no-copy", data=b"ignored"))
+        self.assertEqual(path.name, "startup error.txt")
+        self.assertEqual(path.parent.parent, target.resolve())
+        self.assertEqual(path.read_bytes(), "日本語のログ\n\n".encode())
+        result = self.run_cli("last", "--no-copy")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, os.fsencode(path) + b"\n")
+        self.assertEqual(self.clipboard.read_bytes(), "日本語のログ\n\n".encode())
+
+    def test_history_rejects_symlink_directory_without_writing_records(self):
+        target = self.root / "other-history"
+        target.mkdir(mode=0o700)
+        history = self.root / "state" / "clipref" / "history"
+        history.parent.mkdir(parents=True)
+        history.symlink_to(target, target_is_directory=True)
+        result = self.run_cli("--no-copy")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(b"history could not be recorded", result.stderr)
+        self.assertEqual(list(target.iterdir()), [])
+        self.assertNotEqual(self.run_cli("list").returncode, 0)
+
     def test_invalid_config_is_data_and_preserves_clipboard(self):
         marker = self.root / "executed"
         for content in ["unknown=x", "ext=", "ext=../log", "dir=relative", "ext=txt\next=log",
