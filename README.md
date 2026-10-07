@@ -81,6 +81,22 @@ Piped input takes precedence over the clipboard. The default extension is `txt`.
 Extensions change the filename only; they do not convert the content.
 Input is preserved without trimming or adding a newline.
 
+## Configuration
+
+Available in the development source after v0.1.0. Create
+`~/.config/clipref/config` (or `$XDG_CONFIG_HOME/clipref/config`):
+
+```text
+dir=~/logs
+ext=log
+```
+
+Create the save directory first. Values are literal text, without quotes or shell
+expansion; only a leading `~/` expands to your home directory. Blank lines and
+lines starting with `#` are ignored. Use an absolute directory path or `~/`.
+Command-line options override configuration, which overrides built-in defaults.
+Unknown keys, duplicate keys, and invalid values are errors.
+
 ## Files
 
 Each run creates a private `clipref.XXXXXX` directory in the system temp directory,

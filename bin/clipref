@@ -21,12 +21,15 @@ die() { printf 'clipref: %s\n' "$*" >&2; exit 1; }
 
 save_dir=${TMPDIR:-/tmp}
 extension=txt
+dir_explicit=false
+ext_explicit=false
 copy_path=true
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dir|--ext)
       [ "$#" -ge 2 ] || die "missing value for $1"
-      if [ "$1" = --dir ]; then save_dir=$2; else extension=$2; fi
+      if [ "$1" = --dir ]; then save_dir=$2; dir_explicit=true
+      else extension=$2; ext_explicit=true; fi
       shift 2
       ;;
     --no-copy) copy_path=false; shift ;;
@@ -37,6 +40,48 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "$(uname -s)" = Darwin ] || die 'macOS is required'
+# Configuration is literal key=value data, never shell code.
+config_path="${XDG_CONFIG_HOME:-$HOME/.config}/clipref/config"
+trim() {
+  local text=$1
+  text="${text#"${text%%[![:space:]]*}"}"
+  text="${text%"${text##*[![:space:]]}"}"
+  printf '%s' "$text"
+}
+if [ -e "$config_path" ]; then
+  [ -f "$config_path" ] && [ -r "$config_path" ] || die 'configuration is not a readable file'
+  config_dir_seen=false
+  config_ext_seen=false
+  line_number=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_number=$((line_number + 1))
+    line=$(trim "$line")
+    case "$line" in ''|\#*) continue ;; esac
+    case "$line" in *=*) ;; *) die "invalid configuration at line $line_number: expected key=value" ;; esac
+    key=$(trim "${line%%=*}")
+    value=$(trim "${line#*=}")
+    [ -n "$value" ] || die "empty configuration value at line $line_number"
+    case "$key" in
+      dir)
+        [ "$config_dir_seen" = false ] || die 'duplicate configuration key: dir'
+        config_dir_seen=true
+        case "$value" in
+          '~/'*) value="$HOME/${value#\~/}" ;;
+          /*) ;;
+          *) die 'configuration dir must be an absolute path or start with ~/' ;;
+        esac
+        if [ "$dir_explicit" = false ]; then save_dir=$value; fi
+        ;;
+      ext)
+        [ "$config_ext_seen" = false ] || die 'duplicate configuration key: ext'
+        config_ext_seen=true
+        case "$value" in ''|*[!a-zA-Z0-9_-]*) die 'invalid configuration extension' ;; esac
+        if [ "$ext_explicit" = false ]; then extension=$value; fi
+        ;;
+      *) die "unknown configuration key at line $line_number" ;;
+    esac
+  done < "$config_path"
+fi
 case "$extension" in
   ''|*[!a-zA-Z0-9_-]*) die 'extension must contain only letters, numbers, underscores or hyphens' ;;
 esac
