@@ -112,13 +112,17 @@ then search for errors and read the surrounding lines as needed.
 ```sh
 bash -n bin/clipref
 bash -n install.sh
+shellcheck --shell=bash bin/clipref install.sh
 python3 -m unittest discover -s tests -v
 ```
 
 Tests use fake clipboard commands; they do not access the system clipboard.
 Python 3 is needed only for tests.
+ShellCheck is needed only for linting; on macOS, install it with `brew install shellcheck`.
 
 GitHub Actions runs the syntax check and tests on macOS for pushes and pull requests.
+ShellCheck checks both Bash scripts on Ubuntu. Dependabot opens weekly update PRs
+for GitHub Actions dependencies.
 
 ## Update
 
