@@ -22,6 +22,8 @@ class CliprefTests(unittest.TestCase):
         self.clipboard.write_bytes(b"original clipboard\n")
         self.env = os.environ.copy()
         self.env.update(
+            HOME=str(self.root / "home"),
+            XDG_STATE_HOME=str(self.root / "state"),
             PATH=f"{self.stubs}:/usr/bin:/bin",
             TMPDIR=str(self.save_dir),
             CLIPREF_TEST_CLIPBOARD=str(self.clipboard),
@@ -161,6 +163,71 @@ class CliprefTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b"macOS is required", result.stderr)
         self.assertEqual(list(self.save_dir.iterdir()), [])
+
+    def test_history_listing_and_last_preserve_path(self):
+        first = self.saved_path(self.run_cli(data=b"first"))
+        second = self.saved_path(self.run_cli(data=b"second"))
+        self.stub("pbpaste", "exit 99")
+        result = self.run_cli("list", "--limit", "1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+        self.assertTrue(result.stdout.startswith(b"exists\t"))
+        result = self.run_cli("last")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, os.fsencode(second) + b"\n")
+        self.assertEqual(self.clipboard.read_bytes(), os.fsencode(second))
+        records = list((self.root / "state" / "clipref" / "history").glob("entry.*"))
+        self.assertEqual(len(records), 2)
+        for record in records:
+            self.assertEqual(record.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(first.read_bytes(), b"first")
+
+    def test_history_missing_last_and_no_copy(self):
+        path = self.saved_path(self.run_cli())
+        self.clipboard.write_bytes(b"unchanged")
+        result = self.run_cli("last", "--no-copy")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.clipboard.read_bytes(), b"unchanged")
+        path.unlink()
+        self.assertTrue(self.run_cli("list").stdout.startswith(b"missing\t"))
+        result = self.run_cli("last")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.clipboard.read_bytes(), b"unchanged")
+
+    def test_history_empty_and_invalid_arguments(self):
+        self.assertEqual(self.run_cli("list").stdout, b"")
+        self.assertNotEqual(self.run_cli("last").returncode, 0)
+        for args in [("list", "--limit", "0"), ("list", "--limit", "1001"),
+                     ("list", "--limit", "01"), ("list", "--limit"),
+                     ("last", "--dir", "/tmp"), ("--limit", "2")]:
+            self.assertNotEqual(self.run_cli(*args).returncode, 0)
+        self.assertFalse((self.root / "state").exists())
+
+    def test_history_failure_keeps_saved_file_and_copies_path(self):
+        history = self.root / "state" / "clipref" / "history"
+        history.mkdir(parents=True, mode=0o755)
+        result = self.run_cli()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        path = Path(os.fsdecode(result.stdout.rstrip(b"\n")))
+        self.assertTrue(path.is_file())
+        self.assertIn(b"history could not be recorded", result.stderr)
+        self.assertEqual(self.clipboard.read_bytes(), os.fsencode(path))
+        self.assertNotEqual(self.run_cli("list").returncode, 0)
+
+    def test_history_concurrent_saves_have_complete_records(self):
+        commands = [["/bin/bash", str(SCRIPT), "--no-copy"] for _ in range(6)]
+        processes = [subprocess.Popen(c, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, env=self.env) for c in commands]
+        paths = []
+        for process in processes:
+            out, err = process.communicate(b"concurrent log", timeout=5)
+            self.assertEqual(process.returncode, 0, err)
+            self.assertEqual(err, b"")
+            paths.append(out.rstrip(b"\n"))
+        history = self.root / "state" / "clipref" / "history"
+        self.assertEqual({p.read_bytes() for p in history.glob("entry.*")},
+                         {p + b"\0" for p in paths})
+        self.assertEqual(list(history.glob(".pending.*")), [])
 
     def test_help_does_not_read_clipboard_or_create_files(self):
         self.stub("pbpaste", "exit 1")

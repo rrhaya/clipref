@@ -93,6 +93,26 @@ If copying the path fails, the file remains and its path is printed.
 clipref does not delete saved files. System temp files may be removed by the OS.
 Use `--dir` when you need to keep a file or place it inside an agent's workspace.
 
+## History
+
+Available in the development source after v0.1.0:
+
+```sh
+clipref list --limit 10  # Recent paths, marked exists or missing
+clipref last            # Print and copy the newest saved path
+clipref last --no-copy  # Print it without changing the clipboard
+```
+
+List output quotes paths for the shell. `last` copies the original absolute path.
+If the latest file is gone, `last` reports an error rather than selecting another file.
+History follows record modification times, newest first; simultaneous saves may tie.
+
+Each successful save records only its path, including saves with `--dir`.
+Records are private and stored in `~/.local/state/clipref/history`, or
+`$XDG_STATE_HOME/clipref/history` when set. Configuration defaults do not change
+the history location. Missing files remain listed; no files are deleted automatically.
+If recording history fails, the saved file and path copying still work and a warning is printed.
+
 ## Using it with an agent
 
 The agent must be able to access the saved file. A local path alone will not make

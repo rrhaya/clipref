@@ -5,6 +5,8 @@ version=0.1.0
 usage() {
   cat <<'EOF'
 Usage: clipref [--dir DIRECTORY] [--ext EXTENSION] [--no-copy]
+       clipref list [--limit COUNT]
+       clipref last [--no-copy]
 
 Save clipboard text or piped input to a local file.
 Print its absolute path and copy the path to the clipboard.
@@ -12,6 +14,9 @@ Print its absolute path and copy the path to the clipboard.
   --dir DIRECTORY  Save in an existing directory (default: system temp directory)
   --ext EXTENSION  File extension, without a dot (default: txt)
   --no-copy        Print the path without changing the clipboard
+  list             List recent paths (default: 10; shell-quoted)
+  last             Print and copy the most recently saved path
+  --limit COUNT    List at most COUNT paths (1-1000)
   --version        Show version
   -h, --help       Show help
 EOF
@@ -22,14 +27,27 @@ die() { printf 'clipref: %s\n' "$*" >&2; exit 1; }
 save_dir=${TMPDIR:-/tmp}
 extension=txt
 copy_path=true
+mode=save
+limit=10
+if [ "$#" -gt 0 ]; then
+  case "$1" in list|last) mode=$1; shift ;; esac
+fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dir|--ext)
+      [ "$mode" = save ] || die 'save options cannot be used with history commands'
       [ "$#" -ge 2 ] || die "missing value for $1"
       if [ "$1" = --dir ]; then save_dir=$2; else extension=$2; fi
       shift 2
       ;;
-    --no-copy) copy_path=false; shift ;;
+    --no-copy)
+      [ "$mode" != list ] || die '--no-copy cannot be used with list'
+      copy_path=false; shift ;;
+    --limit)
+      [ "$mode" = list ] || die '--limit is only valid with list'
+      [ "$#" -ge 2 ] || die 'missing value for --limit'
+      [[ "$2" =~ ^[1-9][0-9]{0,3}$ ]] && [ "$2" -le 1000 ] || die '--limit must be 1-1000'
+      limit=$2; shift 2 ;;
     --version) printf 'clipref %s\n' "$version"; exit 0 ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown argument: $1" ;;
@@ -37,11 +55,54 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "$(uname -s)" = Darwin ] || die 'macOS is required'
+umask 077
+history_dir="${XDG_STATE_HOME:-$HOME/.local/state}/clipref/history"
+history_ready() {
+  [ ! -L "$history_dir" ] && [ -d "$history_dir" ] && [ -O "$history_dir" ] \
+    && [ -r "$history_dir" ] && [ -w "$history_dir" ] \
+    && [ "$(stat -f %Lp "$history_dir")" = 700 ]
+}
+copy_saved_path() {
+  printf '%s\n' "$file_path"
+  if [ "$copy_path" = true ]; then
+    printf '%s' "$file_path" | pbcopy || die 'file saved, but copying its path failed; use the path printed above'
+  fi
+}
+if [ "$mode" != save ]; then
+  if [ ! -e "$history_dir" ] && [ ! -L "$history_dir" ]; then
+    [ "$mode" = list ] && exit 0
+    die 'history is empty'
+  fi
+  history_ready || die 'history directory must be private, owned by you, and accessible'
+  shopt -s nullglob
+  records=("$history_dir"/entry.*)
+  if [ "${#records[@]}" -eq 0 ]; then
+    [ "$mode" = list ] && exit 0
+    die 'history is empty'
+  fi
+  count=0
+  while IFS= read -r record; do
+    [ -f "$record" ] && [ ! -L "$record" ] || continue
+    file_path=
+    IFS= read -r -d '' file_path < "$record" || continue
+    case "$file_path" in /*) ;; *) continue ;; esac
+    if [ "$mode" = last ]; then
+      [ -f "$file_path" ] || die 'most recent saved file no longer exists'
+      copy_saved_path
+      exit 0
+    fi
+    if [ -f "$file_path" ]; then status=exists; else status=missing; fi
+    printf '%s\t%q\n' "$status" "$file_path"
+    count=$((count + 1))
+    [ "$count" -lt "$limit" ] || break
+  done < <(ls -t -- "${records[@]}")
+  [ "$mode" = list ] && exit 0
+  die 'history has no valid entries'
+fi
 case "$extension" in
   ''|*[!a-zA-Z0-9_-]*) die 'extension must contain only letters, numbers, underscores or hyphens' ;;
 esac
 save_dir=$(cd -- "$save_dir" 2>/dev/null && pwd -P) || die 'save directory does not exist or is inaccessible'
-umask 077
 item_dir=$(mktemp -d "$save_dir/clipref.XXXXXX") || die 'could not create a save directory'
 file_path="$item_dir/input.$extension"
 
@@ -68,9 +129,18 @@ if [ ! -s "$file_path" ]; then
   die 'input is empty'
 fi
 
-printf '%s\n' "$file_path"
-if [ "$copy_path" = true ]; then
-  if ! printf '%s' "$file_path" | pbcopy; then
-    die 'file saved, but copying its path failed; use the path printed above'
+# Publish one independent record per save, so writers never share an index file.
+record_history() {
+  local record
+  mkdir -p -- "$history_dir" || return 1
+  history_ready || return 1
+  record=$(mktemp "$history_dir/.pending.XXXXXX") || return 1
+  if printf '%s\0' "$file_path" > "$record" \
+      && mv -- "$record" "$history_dir/entry.${record##*.pending.}"; then
+    return 0
   fi
-fi
+  rm -f -- "$record"
+  return 1
+}
+record_history || printf 'clipref: file saved, but history could not be recorded\n' >&2
+copy_saved_path
