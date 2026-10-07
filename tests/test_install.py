@@ -19,11 +19,12 @@ class InstallTests(unittest.TestCase):
         self.env = os.environ.copy()
         self.env.update(PATH=f"{self.stubs}:/usr/bin:/bin",
                         TMPDIR=str(self.root),
-                        CLIPREF_TEST_SOURCE=str(ROOT / "bin" / "clipref"))
+                        CLIPREF_TEST_SOURCE=str(ROOT / "bin" / "clipref"),
+                        CLIPREF_TEST_RELEASE="v0.1.0")
         self.stub("uname", "printf 'Darwin\\n'")
         self.stub("curl", '''
 [ "$1" = -fsSL ] || exit 1
-[ "$2" = https://raw.githubusercontent.com/rrhaya/clipref/main/bin/clipref ] || exit 1
+[ "$2" = "https://raw.githubusercontent.com/rrhaya/clipref/$CLIPREF_TEST_RELEASE/bin/clipref" ] || exit 1
 [ "$3" = -o ] || exit 1
 cp "$CLIPREF_TEST_SOURCE" "$4"
 ''')
@@ -52,6 +53,22 @@ cp "$CLIPREF_TEST_SOURCE" "$4"
         self.assertIn(b"Usage: clipref", help_result.stdout)
         self.assertIn(b"Add this directory to PATH", result.stdout)
         self.assert_no_download_files()
+
+    def test_selects_requested_release(self):
+        self.env["CLIPREF_TEST_RELEASE"] = "v0.2.0"
+        result = self.run_install("--version", "v0.2.0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.target / "clipref").is_file())
+        self.assert_no_download_files()
+
+    def test_rejects_invalid_release_before_download(self):
+        for tag in ["", "main", "0.1.0", "v0.1", "../main", "v0.1.0/other", "v0.1.0;echo"]:
+            with self.subTest(tag=tag):
+                result = self.run_install("--version", tag)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b"release tag must", result.stderr)
+                self.assertFalse(self.target.exists())
+                self.assert_no_download_files()
 
     def test_failed_download_keeps_existing_installation(self):
         self.target.mkdir(parents=True)
@@ -92,7 +109,7 @@ cp "$CLIPREF_TEST_SOURCE" "$4"
         self.assert_no_download_files()
 
     def test_rejects_invalid_options(self):
-        for args in [("--bin-dir",), ("--bin-dir", ""), ("--unknown",)]:
+        for args in [("--bin-dir",), ("--bin-dir", ""), ("--version",), ("--unknown",)]:
             with self.subTest(args=args):
                 result = self.run_install(*args)
                 self.assertNotEqual(result.returncode, 0)

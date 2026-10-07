@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+version=0.1.0
 
 usage() {
   cat <<'EOF'
@@ -11,6 +12,7 @@ Print its absolute path and copy the path to the clipboard.
   --dir DIRECTORY  Save in an existing directory (default: system temp directory)
   --ext EXTENSION  File extension, without a dot (default: txt)
   --no-copy        Print the path without changing the clipboard
+  --version        Show version
   -h, --help       Show help
 EOF
 }
@@ -28,6 +30,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --no-copy) copy_path=false; shift ;;
+    --version) printf 'clipref %s\n' "$version"; exit 0 ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac

@@ -12,10 +12,10 @@ macOS. Uses Bash and commands included with macOS. No network requests.
 ## Install
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash'
 ```
 
-Installs the current `main` version to `~/.local/bin`. Run the same command to update.
+Installs `v0.1.0` to `~/.local/bin`.
 The installer does not edit your shell configuration. If the directory is not in
 your `PATH`, add this line to `~/.zshrc` and open a new terminal:
 
@@ -30,6 +30,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ```sh
 git clone https://github.com/rrhaya/clipref.git
 cd clipref
+git checkout v0.1.0
 ```
 
 2. Install the command:
@@ -44,6 +45,7 @@ install -m 755 bin/clipref "$HOME/.local/bin/clipref"
 ```sh
 export PATH="$HOME/.local/bin:$PATH"
 clipref --help
+clipref --version
 ```
 
 For future terminal sessions, add the `export` line to `~/.zshrc`.
@@ -120,11 +122,10 @@ GitHub Actions runs the syntax check and tests on macOS for pushes and pull requ
 
 ## Update
 
-From your source checkout:
+Use the installer with the release tag you want:
 
 ```sh
-git pull --ff-only
-install -m 755 bin/clipref "$HOME/.local/bin/clipref"
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash -s -- --version v0.1.0'
 ```
 
 ## Uninstall
@@ -134,11 +135,6 @@ rm "$HOME/.local/bin/clipref"
 ```
 
 Saved files are kept. Remove them separately when you no longer need them.
-
-## Planned
-
-Configuration file support for the default save directory and extension.
-For now, use `--dir` and `--ext`.
 
 ## License
 

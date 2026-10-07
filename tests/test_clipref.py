@@ -169,6 +169,14 @@ class CliprefTests(unittest.TestCase):
         self.assertIn(b"Usage: clipref", result.stdout)
         self.assertEqual(list(self.save_dir.iterdir()), [])
 
+    def test_version_does_not_read_clipboard_or_create_files(self):
+        self.stub("pbpaste", "exit 1")
+        result = self.run_cli("--version")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"clipref 0.1.0\n")
+        self.assertEqual(list(self.save_dir.iterdir()), [])
+        self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
+
 
 if __name__ == "__main__":
     unittest.main()

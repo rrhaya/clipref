@@ -12,10 +12,10 @@ macOS。BashとmacOS標準コマンドを使います。ネット通信は行い
 ## インストール
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash'
 ```
 
-現在の`main`のコードを`~/.local/bin`にインストールします。更新も同じコマンドで行えます。
+`v0.1.0`を`~/.local/bin`にインストールします。
 シェルの設定ファイルは変更しません。`PATH`に登録されていない場合は、
 次の行を`~/.zshrc`に追加して、新しいターミナルを開いてください。
 
@@ -30,6 +30,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ```sh
 git clone https://github.com/rrhaya/clipref.git
 cd clipref
+git checkout v0.1.0
 ```
 
 2. コマンドをインストールします。
@@ -44,6 +45,7 @@ install -m 755 bin/clipref "$HOME/.local/bin/clipref"
 ```sh
 export PATH="$HOME/.local/bin:$PATH"
 clipref --help
+clipref --version
 ```
 
 次回以降のターミナルでも使うには、`export`の行を`~/.zshrc`に追加してください。
@@ -120,11 +122,10 @@ GitHub Actionsでも、pushとpull request時にmacOS上で構文チェックと
 
 ## 更新
 
-ソースを取得したディレクトリで実行します。
+インストーラーに使いたいバージョンのタグを指定します。
 
 ```sh
-git pull --ff-only
-install -m 755 bin/clipref "$HOME/.local/bin/clipref"
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash -s -- --version v0.1.0'
 ```
 
 ## アンインストール
@@ -134,11 +135,6 @@ rm "$HOME/.local/bin/clipref"
 ```
 
 保存ファイルは残ります。不要になったファイルは別途削除してください。
-
-## 今後の予定
-
-保存先と拡張子の初期値を設定ファイルで指定できるようにします。
-現在は`--dir`と`--ext`を使ってください。
 
 ## ライセンス
 
