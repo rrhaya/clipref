@@ -344,7 +344,7 @@ class CliprefTests(unittest.TestCase):
         self.stub("pbpaste", "exit 1")
         result = self.run_cli("--version")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"clipref 0.1.0\n")
+        self.assertEqual(result.stdout, b"clipref 0.2.0\n")
         self.assertEqual(list(self.save_dir.iterdir()), [])
         self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
 

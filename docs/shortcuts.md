@@ -2,7 +2,7 @@
 
 [日本語](shortcuts.ja.md)
 
-Requires macOS Shortcuts and a clipref build with `--clipboard` (not v0.1.0).
+Requires macOS Shortcuts and clipref v0.2.0 or later.
 Install that build first and run `clipref --help` to check the option is available.
 
 1. Open Shortcuts and create a shortcut named “Save clipboard with clipref”.

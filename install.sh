@@ -6,13 +6,13 @@ usage() {
 Usage: bash install.sh [--bin-dir DIRECTORY] [--version TAG]
 
 Install clipref on macOS. Default directory: ~/.local/bin
-Default release: v0.1.0. Tags must have the form vMAJOR.MINOR.PATCH.
+Default release: v0.2.0. Tags must have the form vMAJOR.MINOR.PATCH.
 EOF
 }
 die() { printf 'clipref installer: %s\n' "$*" >&2; exit 1; }
 
 bin_dir="$HOME/.local/bin"
-release_tag=v0.1.0
+release_tag=v0.2.0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --bin-dir)

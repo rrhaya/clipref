@@ -16,3 +16,5 @@ jobs:
           /bin/bash -n install.sh
       - name: Run tests
         run: python3 -m unittest discover -s tests -v
+      - name: Check Homebrew formula syntax
+        run: ruby -c packaging/homebrew/clipref.rb
