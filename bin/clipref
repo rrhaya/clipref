@@ -60,7 +60,9 @@ while [ "$#" -gt 0 ]; do
     --limit)
       [ "$mode" = list ] || die '--limit is only valid with list'
       [ "$#" -ge 2 ] || die 'missing value for --limit'
-      [[ "$2" =~ ^[1-9][0-9]{0,3}$ ]] && [ "$2" -le 1000 ] || die '--limit must be 1-1000'
+      if ! [[ "$2" =~ ^[1-9][0-9]{0,3}$ ]] || [ "$2" -gt 1000 ]; then
+        die '--limit must be 1-1000'
+      fi
       limit=$2; shift 2 ;;
     --version) printf 'clipref %s\n' "$version"; exit 0 ;;
     -h|--help) usage; exit 0 ;;
@@ -96,7 +98,7 @@ if [ "$mode" != save ]; then
   fi
   count=0
   while IFS= read -r record; do
-    [ -f "$record" ] && [ ! -L "$record" ] || continue
+    if [ ! -f "$record" ] || [ -L "$record" ]; then continue; fi
     file_path=
     IFS= read -r -d '' file_path < "$record" || continue
     case "$file_path" in /*) ;; *) continue ;; esac
@@ -122,7 +124,9 @@ trim() {
   printf '%s' "$text"
 }
 if [ -e "$config_path" ]; then
-  [ -f "$config_path" ] && [ -r "$config_path" ] || die 'configuration is not a readable file'
+  if [ ! -f "$config_path" ] || [ ! -r "$config_path" ]; then
+    die 'configuration is not a readable file'
+  fi
   config_dir_seen=false
   config_ext_seen=false
   line_number=0
