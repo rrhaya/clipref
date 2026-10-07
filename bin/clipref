@@ -4,13 +4,14 @@ version=0.1.0
 
 usage() {
   cat <<'EOF'
-Usage: clipref [--dir DIRECTORY] [--ext EXTENSION] [--no-copy]
+Usage: clipref [--clipboard] [--dir DIRECTORY] [--ext EXTENSION] [--no-copy]
        clipref list [--limit COUNT]
        clipref last [--no-copy]
 
 Save clipboard text or piped input to a local file.
 Print its absolute path and copy the path to the clipboard.
 
+  --clipboard      Read clipboard text even when stdin is not a terminal
   --dir DIRECTORY  Save in an existing directory (default: system temp directory)
   --ext EXTENSION  File extension, without a dot (default: txt)
   --no-copy        Print the path without changing the clipboard
@@ -27,6 +28,7 @@ die() { printf 'clipref: %s\n' "$*" >&2; exit 1; }
 save_dir=${TMPDIR:-/tmp}
 extension=txt
 copy_path=true
+clipboard_input=false
 mode=save
 limit=10
 if [ "$#" -gt 0 ]; then
@@ -40,6 +42,9 @@ while [ "$#" -gt 0 ]; do
       if [ "$1" = --dir ]; then save_dir=$2; else extension=$2; fi
       shift 2
       ;;
+    --clipboard)
+      [ "$mode" = save ] || die '--clipboard is only valid when saving'
+      clipboard_input=true; shift ;;
     --no-copy)
       [ "$mode" != list ] || die '--no-copy cannot be used with list'
       copy_path=false; shift ;;
@@ -112,7 +117,7 @@ discard_incomplete() {
   rmdir -- "$item_dir"
 }
 
-if [ -t 0 ]; then
+if [ "$clipboard_input" = true ] || [ -t 0 ]; then
   if ! pbpaste > "$file_path"; then
     discard_incomplete
     die 'could not read clipboard text'
