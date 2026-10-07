@@ -13,10 +13,10 @@ macOS。BashとmacOS標準コマンドを使います。
 ## インストール
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.2.0/install.sh | bash'
 ```
 
-`v0.1.0`を`~/.local/bin`にインストールします。
+`v0.2.0`を`~/.local/bin`にインストールします。
 シェルの設定ファイルは変更しません。`PATH`に登録されていない場合は、
 次の行を`~/.zshrc`に追加して、新しいターミナルを開いてください。
 
@@ -36,7 +36,7 @@ clipref --help
 ### インストール先を変更
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.2.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
 ```
 
 必要に応じて、指定したディレクトリを`PATH`に追加してください。
@@ -49,7 +49,7 @@ bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref
 ```sh
 git clone https://github.com/rrhaya/clipref.git
 cd clipref
-git checkout v0.1.0
+git checkout v0.2.0
 ```
 
 2. コマンドをインストールします。
@@ -98,17 +98,17 @@ clipref --no-copy               # クリップボードを変更せず、パス�
 
 パイプ入力がある場合は、クリップボードより優先します。`clipref --clipboard`で
 入力元を明示すると、ランチャーやショートカットからもクリップボードを読めます。
-この場合、標準入力は読みません。このオプションはv0.1.0以降の開発ソースで利用できます。
+この場合、標準入力は読みません。このオプションはv0.2.0以降で利用できます。
 拡張子の初期値は`txt`です。
 拡張子の指定はファイル名だけを変えます。内容の変換は行いません。
-v0.1.0以降の開発ソースでは、`clipref --name startup-error.log`でファイル名を指定できます。
+v0.2.0以降では、`clipref --name startup-error.log`でファイル名を指定できます。
 空白や日本語も使えます。パス区切り・タブ・改行は使えません。`--name`と`--ext`は併用できません。
 `--name`を指定した場合は、設定ファイルの拡張子よりファイル名を優先します。
 入力の空白や改行はそのまま保存します。末尾に改行を追加しません。
 
 ## 設定ファイル
 
-v0.1.0以降の開発ソースで利用できます。`~/.config/clipref/config`
+v0.2.0以降で利用できます。`~/.config/clipref/config`
 （`XDG_CONFIG_HOME`を指定した場合はその下の`clipref/config`）を作成します。
 
 ```text
@@ -124,7 +124,7 @@ ext=log
 ## 保存ファイル
 
 キー操作で実行する場合は[macOSショートカットの設定手順](docs/shortcuts.ja.md)を参照してください。
-`--clipboard`に対応した開発版が必要です。
+v0.2.0以降が必要です。
 
 実行ごとに、システムの一時ディレクトリまたは`--dir`で指定した場所に
 `clipref.XXXXXX`ディレクトリを作ります。ファイルは所有者だけが読み書きできます。
@@ -138,7 +138,7 @@ cliprefは保存ファイルを削除しません。システムの一時ファ�
 
 ## 履歴
 
-v0.1.0以降の開発ソースで利用できます。
+v0.2.0以降で利用できます。
 
 ```sh
 clipref list --limit 10  # 直近のパスとexists/missingを表示
@@ -192,7 +192,7 @@ DependabotはGitHub Actionsの依存を確認し、週次で更新PRを作成し
 インストーラーに使いたいバージョンのタグを指定します。
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash -s -- --version v0.1.0'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash -s -- --version v0.2.0'
 ```
 
 ## アンインストール

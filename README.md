@@ -13,10 +13,10 @@ The installer downloads from GitHub. The installed command makes no network requ
 ## Install
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.2.0/install.sh | bash'
 ```
 
-Installs `v0.1.0` to `~/.local/bin`.
+Installs `v0.2.0` to `~/.local/bin`.
 The installer does not edit your shell configuration. If the directory is not in
 your `PATH`, add this line to `~/.zshrc` and open a new terminal:
 
@@ -36,7 +36,7 @@ The installer sets executable permissions. No separate `chmod` step is needed.
 ### Choose an install directory
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.1.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.2.0/install.sh | bash -s -- --bin-dir "$HOME/bin"'
 ```
 
 Add the chosen directory to your `PATH` if needed.
@@ -49,7 +49,7 @@ Add the chosen directory to your `PATH` if needed.
 ```sh
 git clone https://github.com/rrhaya/clipref.git
 cd clipref
-git checkout v0.1.0
+git checkout v0.2.0
 ```
 
 2. Install the command:
@@ -98,10 +98,10 @@ clipref --no-copy               # Print the path without changing the clipboard
 
 Piped input takes precedence over the clipboard. Use `clipref --clipboard` to
 read the clipboard explicitly, including from launchers or Shortcuts. It ignores
-stdin. This option is available in the development source, after v0.1.0.
+stdin. Available since v0.2.0.
 The default extension is `txt`.
 Extensions change the filename only; they do not convert the content.
-In the development source after v0.1.0, use `clipref --name startup-error.log`
+Since v0.2.0, use `clipref --name startup-error.log`
 to choose a filename. Names may contain spaces and Japanese characters, but must
 not contain path separators, tabs, or line breaks. `--name` and `--ext` cannot be combined.
 A filename supplied with `--name` takes precedence over the configured extension.
@@ -109,7 +109,7 @@ Input is preserved without trimming or adding a newline.
 
 ## Configuration
 
-Available in the development source after v0.1.0. Create
+Available since v0.2.0. Create
 `~/.config/clipref/config` (or `$XDG_CONFIG_HOME/clipref/config`):
 
 ```text
@@ -126,7 +126,7 @@ Unknown keys, duplicate keys, and invalid values are errors.
 ## Files
 
 For keyboard access, see [macOS Shortcut setup](docs/shortcuts.md).
-Requires the development build with `--clipboard`.
+Requires v0.2.0 or later.
 
 Each run creates a private `clipref.XXXXXX` directory in the system temp directory,
 or in the directory passed to `--dir`. Files are readable and writable only by
@@ -140,7 +140,7 @@ Use `--dir` when you need to keep a file or place it inside an agent's workspace
 
 ## History
 
-Available in the development source after v0.1.0:
+Available since v0.2.0:
 
 ```sh
 clipref list --limit 10  # Recent paths, marked exists or missing
@@ -194,7 +194,7 @@ for GitHub Actions dependencies.
 Use the installer with the release tag you want:
 
 ```sh
-bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash -s -- --version v0.1.0'
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/main/install.sh | bash -s -- --version v0.2.0'
 ```
 
 ## Uninstall

@@ -29,5 +29,7 @@ of the downloaded archive. Re-run the checks above and publish the tap change
 after the release is available. Do not use a moving branch as the formula URL.
 
 Validation so far: downloaded the release archive and computed its checksum;
-checked Ruby syntax. Homebrew style, audit, installation, and formula tests remain
+checked Ruby syntax and the formula's installation phase in an isolated directory,
+including executable permissions, `--version`, and `--help`.
+Full Homebrew style, audit, installation, and formula tests remain
 pending until the tap is set up.

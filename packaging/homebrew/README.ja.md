@@ -28,4 +28,5 @@ brew uninstall clipref
 上記の検証を再実行し、リリース公開後にtapの更新を公開します。移動するブランチのURLは使いません。
 
 検証状況: 公開アーカイブのダウンロード・チェックサム計算・Ruby構文チェックは完了しました。
+一時ディレクトリでFormulaのインストール処理を動かし、実行権限・`--version`・`--help`も確認しました。
 Homebrewのstyle・audit・インストール・Formulaテストはtap準備後に行います。

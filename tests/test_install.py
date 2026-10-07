@@ -20,7 +20,7 @@ class InstallTests(unittest.TestCase):
         self.env.update(PATH=f"{self.stubs}:/usr/bin:/bin",
                         TMPDIR=str(self.root),
                         CLIPREF_TEST_SOURCE=str(ROOT / "bin" / "clipref"),
-                        CLIPREF_TEST_RELEASE="v0.1.0")
+                        CLIPREF_TEST_RELEASE="v0.2.0")
         self.stub("uname", "printf 'Darwin\\n'")
         self.stub("curl", '''
 [ "$1" = -fsSL ] || exit 1
@@ -51,18 +51,21 @@ cp "$CLIPREF_TEST_SOURCE" "$4"
         help_result = subprocess.run([str(installed), "--help"], capture_output=True, timeout=5)
         self.assertEqual(help_result.returncode, 0)
         self.assertIn(b"Usage: clipref", help_result.stdout)
+        version_result = subprocess.run([str(installed), "--version"], capture_output=True, timeout=5)
+        self.assertEqual(version_result.returncode, 0)
+        self.assertEqual(version_result.stdout, b"clipref 0.2.0\n")
         self.assertIn(b"Add this directory to PATH", result.stdout)
         self.assert_no_download_files()
 
     def test_selects_requested_release(self):
-        self.env["CLIPREF_TEST_RELEASE"] = "v0.2.0"
-        result = self.run_install("--version", "v0.2.0")
+        self.env["CLIPREF_TEST_RELEASE"] = "v0.3.0"
+        result = self.run_install("--version", "v0.3.0")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue((self.target / "clipref").is_file())
         self.assert_no_download_files()
 
     def test_rejects_invalid_release_before_download(self):
-        for tag in ["", "main", "0.1.0", "v0.1", "../main", "v0.1.0/other", "v0.1.0;echo"]:
+        for tag in ["", "main", "0.2.0", "v0.1", "../main", "v0.2.0/other", "v0.2.0;echo"]:
             with self.subTest(tag=tag):
                 result = self.run_install("--version", tag)
                 self.assertNotEqual(result.returncode, 0)
