@@ -185,7 +185,7 @@ class CliprefTests(unittest.TestCase):
         (home / "logs").mkdir(parents=True)
         self.write_config("dir=~/logs\next=log\n")
         path = self.saved_path(self.run_cli())
-        self.assertEqual(path.parent.parent, home / "logs")
+        self.assertEqual(path.parent.parent, (home / "logs").resolve())
         self.env.pop("XDG_CONFIG_HOME")
         config = home / ".config" / "clipref" / "config"
         config.parent.mkdir(parents=True)
