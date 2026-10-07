@@ -1,0 +1,73 @@
+#!/bin/bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: clipref [--dir DIRECTORY] [--ext EXTENSION] [--no-copy]
+
+Save clipboard text or piped input to a local file.
+Print its absolute path and copy the path to the clipboard.
+
+  --dir DIRECTORY  Save in an existing directory (default: system temp directory)
+  --ext EXTENSION  File extension, without a dot (default: txt)
+  --no-copy        Print the path without changing the clipboard
+  -h, --help       Show help
+EOF
+}
+
+die() { printf 'clipref: %s\n' "$*" >&2; exit 1; }
+
+save_dir=${TMPDIR:-/tmp}
+extension=txt
+copy_path=true
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --dir|--ext)
+      [ "$#" -ge 2 ] || die "missing value for $1"
+      if [ "$1" = --dir ]; then save_dir=$2; else extension=$2; fi
+      shift 2
+      ;;
+    --no-copy) copy_path=false; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "unknown argument: $1" ;;
+  esac
+done
+
+[ "$(uname -s)" = Darwin ] || die 'macOS is required'
+case "$extension" in
+  ''|*[!a-zA-Z0-9_-]*) die 'extension must contain only letters, numbers, underscores or hyphens' ;;
+esac
+save_dir=$(cd -- "$save_dir" 2>/dev/null && pwd -P) || die 'save directory does not exist or is inaccessible'
+umask 077
+item_dir=$(mktemp -d "$save_dir/clipref.XXXXXX") || die 'could not create a save directory'
+file_path="$item_dir/input.$extension"
+
+# Remove only an incomplete file and the directory created by this invocation.
+discard_incomplete() {
+  rm -f -- "$file_path"
+  rmdir -- "$item_dir"
+}
+
+if [ -t 0 ]; then
+  if ! pbpaste > "$file_path"; then
+    discard_incomplete
+    die 'could not read clipboard text'
+  fi
+else
+  if ! cat > "$file_path"; then
+    discard_incomplete
+    die 'could not save input'
+  fi
+fi
+
+if [ ! -s "$file_path" ]; then
+  discard_incomplete
+  die 'input is empty'
+fi
+
+printf '%s\n' "$file_path"
+if [ "$copy_path" = true ]; then
+  if ! printf '%s' "$file_path" | pbcopy; then
+    die 'file saved, but copying its path failed; use the path printed above'
+  fi
+fi
