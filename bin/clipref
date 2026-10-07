@@ -139,7 +139,7 @@ if [ -e "$config_path" ]; then
         [ "$config_dir_seen" = false ] || die 'duplicate configuration key: dir'
         config_dir_seen=true
         case "$value" in
-          '~/'*) value="$HOME/${value#\~/}" ;;
+          \~/*) value="$HOME/${value#\~/}" ;;
           /*) ;;
           *) die 'configuration dir must be an absolute path or start with ~/' ;;
         esac
