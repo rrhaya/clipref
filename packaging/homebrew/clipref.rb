@@ -9,6 +9,7 @@ class Clipref < Formula
 
   def install
     bin.install "bin/clipref"
+    chmod 0555, bin/"clipref"
   end
 
   test do
