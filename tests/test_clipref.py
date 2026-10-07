@@ -76,6 +76,23 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual(path.read_bytes(), content)
         self.assertEqual(self.clipboard.read_bytes(), os.fsencode(path))
 
+    def test_explicit_clipboard_overrides_pipe_and_empty_stdin(self):
+        for data in [b"ignored pipe", b""]:
+            self.clipboard.write_bytes(b"clipboard content\n")
+            path = self.saved_path(self.run_cli("--clipboard", data=data))
+            self.assertEqual(path.read_bytes(), b"clipboard content\n")
+
+    def test_explicit_clipboard_failure_and_empty_input(self):
+        self.clipboard.write_bytes(b"")
+        result = self.run_cli("--clipboard")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"input is empty", result.stderr)
+        self.stub("pbpaste", "printf partial; exit 1")
+        result = self.run_cli("--clipboard")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"could not read clipboard", result.stderr)
+        self.assertEqual(list(self.save_dir.iterdir()), [])
+
     def test_empty_input_preserves_clipboard_and_leaves_no_files(self):
         result = self.run_cli(data=b"")
         self.assertNotEqual(result.returncode, 0)

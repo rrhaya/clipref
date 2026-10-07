@@ -77,7 +77,10 @@ your-command 2>&1 | clipref     # Save command output
 clipref --no-copy               # Print the path without changing the clipboard
 ```
 
-Piped input takes precedence over the clipboard. The default extension is `txt`.
+Piped input takes precedence over the clipboard. Use `clipref --clipboard` to
+read the clipboard explicitly, including from launchers or Shortcuts. It ignores
+stdin. This option is available in the development source, after v0.1.0.
+The default extension is `txt`.
 Extensions change the filename only; they do not convert the content.
 Input is preserved without trimming or adding a newline.
 
