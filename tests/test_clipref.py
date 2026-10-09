@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 import pty
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 
 
@@ -72,6 +74,31 @@ class CliprefTests(unittest.TestCase):
     def test_preserves_missing_final_newline(self):
         path = self.saved_path(self.run_cli(data=b"no final newline"))
         self.assertEqual(path.read_bytes(), b"no final newline")
+
+    def test_interrupted_input_removes_partial_file_and_preserves_clipboard(self):
+        process = subprocess.Popen(["/bin/bash", str(SCRIPT)], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   env=self.env, start_new_session=True)
+        try:
+            process.stdin.write(b"partial log")
+            process.stdin.flush()
+            deadline = time.monotonic() + 3
+            while not any(path.stat().st_size for path in self.save_dir.glob("clipref.*/input.txt")):
+                self.assertLess(time.monotonic(), deadline, "input was not written")
+                time.sleep(0.01)
+            os.killpg(process.pid, signal.SIGTERM)
+            process.wait(timeout=3)
+            self.assertNotEqual(process.returncode, 0)
+            self.assertEqual(list(self.save_dir.iterdir()), [])
+            self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
+            self.assertEqual(list((self.root / "state").glob("clipref/history/entry.*")), [])
+        finally:
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.wait(timeout=3)
+            process.stdin.close()
+            process.stdout.close()
+            process.stderr.close()
 
     def test_terminal_input_reads_clipboard(self):
         content = b"copied log\n\n"
@@ -230,14 +257,36 @@ class CliprefTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.clipboard.read_bytes(), b"unchanged")
 
-    def test_history_empty_and_invalid_arguments(self):
+    def test_history_empty(self):
         self.assertEqual(self.run_cli("list").stdout, b"")
         self.assertNotEqual(self.run_cli("last").returncode, 0)
+
+    def test_history_listing_exceeds_command_argument_limit(self):
+        path = self.saved_path(self.run_cli())
+        history = self.root / "state" / "clipref" / "history"
+        record_size = len(os.fsencode(history / "entry.000000")) + 1
+        count = os.sysconf("SC_ARG_MAX") // record_size + 128
+        for index in range(count):
+            (history / f"entry.{index:06d}").write_bytes(os.fsencode(path) + b"\0")
+        result = self.run_cli("list", "--limit", "1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith(b"exists\t"), result.stderr)
+
+    def test_history_invalid_arguments(self):
         for args in [("list", "--limit", "0"), ("list", "--limit", "1001"),
                      ("list", "--limit", "01"), ("list", "--limit"),
                      ("last", "--dir", "/tmp"), ("--limit", "2")]:
-            self.assertNotEqual(self.run_cli(*args).returncode, 0)
+            with self.subTest(args=args):
+                self.assertNotEqual(self.run_cli(*args).returncode, 0)
         self.assertFalse((self.root / "state").exists())
+
+    def test_history_listing_failure_is_not_reported_as_empty(self):
+        self.saved_path(self.run_cli())
+        self.stub("ls", "exit 1")
+        for mode in ["list", "last"]:
+            result = self.run_cli(mode)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b"could not read history", result.stderr)
 
     def test_history_failure_keeps_saved_file_and_copies_path(self):
         history = self.root / "state" / "clipref" / "history"
