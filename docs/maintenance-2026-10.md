@@ -54,6 +54,14 @@ Orca computer-use capabilities were available. Observing `com.apple.shortcuts` r
 
 ## Remaining sequence
 
+Local implementation commit: `adaa4b0`. Pushing `maintenance/completion-audit` was rejected before execution by the approval policy (`AskForApproval=Never`). No remote branch or PR was created. Do not substitute another upload route for the rejected push. The owner can run:
+
+```sh
+cd /Users/ryu/PJ/playground/clipref
+git push -u origin maintenance/completion-audit
+gh pr create --repo rrhaya/clipref --base main --head maintenance/completion-audit --title 'Fix installation failures, interrupted saves, and large history' --body-file docs/maintenance-pr.md
+```
+
 1. Push `maintenance/completion-audit` and open a PR using `docs/maintenance-pr.md`. Run required CI and merge through the protected main branch.
 2. Finish #7: create or make the rrhaya tap available, obtain and verify the v0.2.0 archive checksum, update URL and checksum together, run Homebrew style/audit/install/test in the real tap, and document the verified installation route.
 3. Finish #5: verify application execution and the assigned keyboard shortcut with synthetic text. Confirm saved bytes and the pasted absolute path. Record the macOS version and results in the issue.
