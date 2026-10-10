@@ -86,3 +86,13 @@ PR #15 was merged as `29bf48e`; #12, #13 and #14 are closed. Follow-up branch: `
 - Shortcuts still returned `window_not_found`, including with `--restore-window` and after opening Apple's documented `shortcuts://create-shortcut` URL. The URL open exited 0, but creation and execution are unverified. No personal clipboard contents were read, and no keyboard binding was assigned.
 
 Remaining #7: obtain the actual archive, generate the new formula, publish the prepared tap, and run installation/test before updating the main READMEs with a working brew route. Remaining #5: accessible editor and synthetic-data application/key execution. Remaining #10: live published-tag download verification plus #7's distribution requirements.
+
+Pushing the follow-up branch was rejected before execution by the same approval policy. Owner commands for the current branch (the earlier PR #15 commands above are historical):
+
+```sh
+cd /Users/ryu/PJ/playground/clipref
+git push -u origin distribution/finish-validation
+gh pr create --repo rrhaya/clipref --base main --head distribution/finish-validation --title 'Prepare Homebrew formula updates and distribution checks' --body-file docs/distribution-pr.md
+```
+
+No high-impact product tradeoff required a decision in this follow-up. The remaining obstacles are execution approval, remote tap publication, and accessible Shortcut UI, rather than unresolved feature design.
