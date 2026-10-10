@@ -11,4 +11,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Check shell scripts
-        run: shellcheck --shell=bash bin/clipref install.sh
+        run: shellcheck --shell=bash bin/clipref install.sh packaging/homebrew/prepare-formula.sh

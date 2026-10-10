@@ -71,3 +71,18 @@ gh pr create --repo rrhaya/clipref --base main --head maintenance/completion-aud
 ## Completion boundary
 
 Do not claim the product complete while distribution, GUI validation, or publishing checks remain unverified. Keep implementation and release work separate; a branch commit is not a release. Do not bump the release solely for documentation or packaging.
+
+## Follow-up after PR #15
+
+PR #15 was merged as `29bf48e`; #12, #13 and #14 are closed. Follow-up branch: `distribution/finish-validation`.
+
+- Fetched the actual v0.2.0 command and installer through the existing GitHub connector. An isolated installation using those exact sources passed byte comparison, executable permissions, `--help`, `--version`, and synthetic stdin saving with `--no-copy`. The installer's curl transport was stubbed to serve the fetched source; this is not a live curl-network verification.
+- SHA-256 of the fetched command: `b8ce26a779ee33c878615d886aabd85fa66221c326a7bdd3eb3130b0ac76ec31`. Installer: `15407231a8aff499af55c7720676a915c42bfa17dbd98e50cd9897c7567dac0e`. Neither is the release archive checksum.
+- Added `packaging/homebrew/prepare-formula.sh`, with tests for the exact checksum, version mismatch, missing archive member, invalid Bash and invalid tag. It reads a locally downloaded archive, extracts only the command to stdout, and emits the formula after validation; it does not execute archive contents or fetch data.
+- All 49 unit tests passed. ShellCheck for all three scripts, helper Bash syntax and diff checks passed. CI now includes helper syntax and ShellCheck.
+- Prepared local `../homebrew-tap`, with fetch/push origin `https://github.com/rrhaya/homebrew-tap.git`, a draft README, formula and macOS CI. Its formula still pins v0.1.0; it must not be published as v0.2.0.
+- Homebrew style on the tap's `Formula/clipref.rb` passed with no offenses. `brew audit --strict rrhaya/tap/clipref` exited 0. Audit by absolute path is disabled by Homebrew, so the local tap was temporarily registered using a symlink. That exact symlink was removed afterward; automatically enabled developer mode was turned off.
+- No Homebrew installation/test was reported as passed. The v0.2.0 archive curl command was again rejected before execution by the approval policy. No download workaround or fabricated checksum was used.
+- Shortcuts still returned `window_not_found`, including with `--restore-window` and after opening Apple's documented `shortcuts://create-shortcut` URL. The URL open exited 0, but creation and execution are unverified. No personal clipboard contents were read, and no keyboard binding was assigned.
+
+Remaining #7: obtain the actual archive, generate the new formula, publish the prepared tap, and run installation/test before updating the main READMEs with a working brew route. Remaining #5: accessible editor and synthetic-data application/key execution. Remaining #10: live published-tag download verification plus #7's distribution requirements.
