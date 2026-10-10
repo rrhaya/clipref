@@ -36,7 +36,9 @@ done
 
 work_dir=$(mktemp -d "${TMPDIR:-/tmp}/clipref-install.XXXXXX")
 download="$work_dir/clipref"
+staged_file=
 cleanup() {
+  if [ -n "$staged_file" ]; then rm -f -- "$staged_file"; fi
   rm -f -- "$download"
   rmdir -- "$work_dir"
 }
@@ -51,15 +53,24 @@ IFS= read -r first_line < "$download"
 
 mkdir -p -- "$bin_dir"
 bin_dir=$(cd -- "$bin_dir" && pwd -P)
-install -m 755 "$download" "$bin_dir/clipref"
+destination="$bin_dir/clipref"
+if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+  die 'destination must be a regular file; existing destination was not changed'
+fi
+staged_file=$(mktemp "$bin_dir/.clipref-install.XXXXXX")
+install -m 755 "$download" "$staged_file" \
+  || die 'installation failed; existing installation was not changed'
+mv -f -- "$staged_file" "$destination" \
+  || die 'replacement failed; existing installation was not changed'
+staged_file=
 printf 'Installed: %s/clipref\n' "$bin_dir"
 case ":$PATH:" in
   *":$bin_dir:"*) printf 'Run: clipref --help\n' ;;
   *)
     printf 'Add this directory to PATH: %s\n' "$bin_dir"
-    printf 'For the default directory, add to ~/.zshrc:\n'
-    # Print placeholders for the user to add to their shell configuration.
+    printf 'Add to ~/.zshrc:\n'
+    # Keep PATH literal and quote the actual install directory, including spaces.
     # shellcheck disable=SC2016
-    printf '  export PATH="$HOME/.local/bin:$PATH"\n'
+    printf '  export PATH=%q:$PATH\n' "$bin_dir"
     ;;
 esac

@@ -90,14 +90,11 @@ if [ "$mode" != save ]; then
     die 'history is empty'
   fi
   history_ready || die 'history directory must be private, owned by you, and accessible'
-  shopt -s nullglob
-  records=("$history_dir"/entry.*)
-  if [ "${#records[@]}" -eq 0 ]; then
-    [ "$mode" = list ] && exit 0
-    die 'history is empty'
-  fi
+  listing=$(ls -1t -- "$history_dir") || die 'could not read history'
   count=0
-  while IFS= read -r record; do
+  while IFS= read -r record_name; do
+    case "$record_name" in entry.*) ;; *) continue ;; esac
+    record="$history_dir/$record_name"
     if [ ! -f "$record" ] || [ -L "$record" ]; then continue; fi
     file_path=
     IFS= read -r -d '' file_path < "$record" || continue
@@ -111,7 +108,7 @@ if [ "$mode" != save ]; then
     printf '%s\t%q\n' "$status" "$file_path"
     count=$((count + 1))
     [ "$count" -lt "$limit" ] || break
-  done < <(ls -t -- "${records[@]}")
+  done <<< "$listing"
   [ "$mode" = list ] && exit 0
   die 'history has no valid entries'
 fi
@@ -179,23 +176,26 @@ discard_incomplete() {
   rm -f -- "$file_path"
   rmdir -- "$item_dir"
 }
+trap discard_incomplete EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 if [ "$clipboard_input" = true ] || [ -t 0 ]; then
   if ! pbpaste > "$file_path"; then
-    discard_incomplete
     die 'could not read clipboard text'
   fi
 else
   if ! cat > "$file_path"; then
-    discard_incomplete
     die 'could not save input'
   fi
 fi
 
 if [ ! -s "$file_path" ]; then
-  discard_incomplete
   die 'input is empty'
 fi
+# The complete file survives history or clipboard failures, including signals.
+trap - EXIT INT TERM HUP
 
 # Publish one independent record per save, so writers never share an index file.
 record_history() {
