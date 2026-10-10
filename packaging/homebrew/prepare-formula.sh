@@ -6,7 +6,9 @@ die() { printf 'prepare-formula: %s\n' "$*" >&2; exit 1; }
 tag=$1
 archive=$2
 [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die 'invalid release tag'
-[ -f "$archive" ] && [ -r "$archive" ] || die 'archive is not a readable file'
+if [ ! -f "$archive" ] || [ ! -r "$archive" ]; then
+  die 'archive is not a readable file'
+fi
 
 # Extract one known member to stdout; never unpack archive paths onto disk.
 work_dir=$(mktemp -d "${TMPDIR:-/tmp}/clipref-formula.XXXXXX")
