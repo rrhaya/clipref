@@ -12,6 +12,17 @@ macOS。BashとmacOS標準コマンドを使います。
 
 ## インストール
 
+### Homebrew
+
+```sh
+brew install rrhaya/tap/clipref
+```
+
+更新は`brew upgrade clipref`、削除は`brew uninstall clipref`で行えます。
+シェル版も導入している場合は、`command -v clipref`で優先される実行ファイルを確認してください。
+
+### シェルインストーラー
+
 ```sh
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.2.0/install.sh | bash'
 ```

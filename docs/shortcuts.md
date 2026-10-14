@@ -20,6 +20,11 @@ Install that build first and run `clipref --help` to check the option is availab
 For another install directory, replace the executable path. Do not rely on your
 terminal's `PATH`: Shortcuts does not load your interactive shell configuration.
 
+For a Homebrew installation, run `command -v clipref` and use that absolute path.
+It is usually `/opt/homebrew/bin/clipref` on Apple Silicon or `/usr/local/bin/clipref`
+on Intel Macs.
+
+
 To keep files in a chosen directory, create it once in Terminal:
 
 ```sh

@@ -12,6 +12,17 @@ The installer downloads from GitHub. The installed command makes no network requ
 
 ## Install
 
+### Homebrew
+
+```sh
+brew install rrhaya/tap/clipref
+```
+
+Use `brew upgrade clipref` to update and `brew uninstall clipref` to remove it.
+If you also used the shell installer, run `command -v clipref` to check which copy runs.
+
+### Shell installer
+
 ```sh
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/rrhaya/clipref/v0.2.0/install.sh | bash'
 ```
