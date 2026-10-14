@@ -38,5 +38,5 @@ brew test rrhaya/tap/clipref
 Local verification: the v0.2.0 archive was downloaded from GitHub; its SHA-256 is
 `23f2642c68a6befc4ccdee8fc8d681f2a89a7a31c64b92826d22a6ce39459268`.
 Style, strict audit, source installation, and formula tests passed on macOS.
-The tap used for that verification was registered from the local checkout;
-public tap creation and an installation from its GitHub URL remain to be verified.
+The public `rrhaya/homebrew-tap` repository was then published. A fresh tap registration
+and `brew install rrhaya/tap/clipref` from GitHub, followed by `brew test`, also passed.
