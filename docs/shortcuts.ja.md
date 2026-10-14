@@ -20,6 +20,10 @@ macOSのショートカットアプリと、clipref v0.2.0以降が必要です�
 別の場所にインストールした場合は実行ファイルのパスを変更してください。
 ショートカットはターミナルのシェル設定を読み込まないため、`PATH`には依存しません。
 
+Homebrewで導入した場合は、`command -v clipref`でパスを確認し、
+上の実行ファイルを置き換えてください。Apple Siliconでは通常`/opt/homebrew/bin/clipref`、
+Intel Macでは通常`/usr/local/bin/clipref`です。
+
 保存先を固定したい場合は、ターミナルで一度ディレクトリを作ります。
 
 ```sh
