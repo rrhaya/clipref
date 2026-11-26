@@ -22,7 +22,7 @@ IFS= read -r first_line < "$script"
 [ "$first_line" = '#!/bin/bash' ] || die 'archive command is not a Bash script'
 /bin/bash -n "$script" || die 'archive command has invalid Bash syntax'
 grep -Fxq "version=${tag#v}" "$script" || die 'command version does not match release tag'
-checksum=$(shasum -a 256 "$archive")
+checksum=$(openssl dgst -sha256 -r < "$archive")
 checksum=${checksum%% *}
 
 cat <<EOF
@@ -38,11 +38,13 @@ class Clipref < Formula
   def install
     bin.install "bin/clipref"
     chmod 0555, bin/"clipref"
+    bin.install_symlink bin/"clipref" => "pbe"
   end
 
   test do
     assert_equal "clipref #{version}\\n", shell_output("#{bin}/clipref --version")
     assert_match "Usage: clipref", shell_output("#{bin}/clipref --help")
+    assert_match "Usage:", shell_output("#{bin}/pbe --help")
   end
 end
 EOF

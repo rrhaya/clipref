@@ -1,18 +1,20 @@
 #!/bin/bash
 set -euo pipefail
-version=0.2.0
+version=0.3.0
+command_name=clipref
+if [ "${0##*/}" = pbe ]; then command_name=pbe; fi
 
 usage() {
-  cat <<'EOF'
-Usage: clipref [--clipboard] [--dir DIRECTORY] [--ext EXTENSION | --name FILENAME] [--no-copy]
-       clipref list [--limit COUNT]
-       clipref last [--no-copy]
+  cat <<EOF
+Usage: $command_name [--clipboard] [--dir DIRECTORY] [--ext EXTENSION | --name FILENAME] [--no-copy]
+       $command_name list [--limit COUNT]
+       $command_name last [--no-copy]
 
 Save clipboard text or piped input to a local file.
 Print its absolute path and copy the path to the clipboard.
 
   --clipboard      Read clipboard text even when stdin is not a terminal
-  --dir DIRECTORY  Save in an existing directory (default: system temp directory)
+  --dir DIRECTORY  Save in an existing directory (default: clipref folder in system temp)
   --ext EXTENSION  File extension, without a dot (default: txt)
   --name FILENAME  Save with this basename instead of input.txt
   --no-copy        Print the path without changing the clipboard
@@ -24,9 +26,9 @@ Print its absolute path and copy the path to the clipboard.
 EOF
 }
 
-die() { printf 'clipref: %s\n' "$*" >&2; exit 1; }
+die() { printf '%s: %s\n' "$command_name" "$*" >&2; exit 1; }
 
-save_dir=${TMPDIR:-/tmp}
+save_dir=
 extension=txt
 extension_explicit=false
 filename=
@@ -64,7 +66,7 @@ while [ "$#" -gt 0 ]; do
         die '--limit must be 1-1000'
       fi
       limit=$2; shift 2 ;;
-    --version) printf 'clipref %s\n' "$version"; exit 0 ;;
+    --version) printf '%s %s\n' "$command_name" "$version"; exit 0 ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
@@ -73,10 +75,11 @@ done
 [ "$(uname -s)" = Darwin ] || die 'macOS is required'
 umask 077
 history_dir="${XDG_STATE_HOME:-$HOME/.local/state}/clipref/history"
-history_ready() {
-  [ ! -L "$history_dir" ] && [ -d "$history_dir" ] && [ -O "$history_dir" ] \
-    && [ -r "$history_dir" ] && [ -w "$history_dir" ] \
-    && [ "$(stat -f %Lp "$history_dir")" = 700 ]
+private_directory() {
+  local directory=$1
+  [ ! -L "$directory" ] && [ -d "$directory" ] && [ -O "$directory" ] \
+    && [ -r "$directory" ] && [ -w "$directory" ] \
+    && [ "$(stat -f %Lp "$directory")" = 700 ]
 }
 copy_saved_path() {
   printf '%s\n' "$file_path"
@@ -89,7 +92,7 @@ if [ "$mode" != save ]; then
     [ "$mode" = list ] && exit 0
     die 'history is empty'
   fi
-  history_ready || die 'history directory must be private, owned by you, and accessible'
+  private_directory "$history_dir" || die 'history directory must be private, owned by you, and accessible'
   listing=$(ls -1t -- "$history_dir") || die 'could not read history'
   count=0
   while IFS= read -r record_name; do
@@ -114,6 +117,7 @@ if [ "$mode" != save ]; then
 fi
 # Configuration is literal key=value data, never shell code.
 config_path="${XDG_CONFIG_HOME:-$HOME/.config}/clipref/config"
+config_dir_seen=false
 trim() {
   local text=$1
   text="${text#"${text%%[![:space:]]*}"}"
@@ -124,7 +128,6 @@ if [ -e "$config_path" ]; then
   if [ ! -f "$config_path" ] || [ ! -r "$config_path" ]; then
     die 'configuration is not a readable file'
   fi
-  config_dir_seen=false
   config_ext_seen=false
   line_number=0
   while IFS= read -r line || [ -n "$line" ]; do
@@ -167,8 +170,16 @@ fi
 case "$extension" in
   ''|*[!a-zA-Z0-9_-]*) die 'extension must contain only letters, numbers, underscores or hyphens' ;;
 esac
-save_dir=$(cd -- "$save_dir" 2>/dev/null && pwd -P) || die 'save directory does not exist or is inaccessible'
-item_dir=$(mktemp -d "$save_dir/clipref.XXXXXX") || die 'could not create a save directory'
+timestamp=$(LC_ALL=C date +%Y%m%d%H%M%S) || die 'could not determine the save timestamp'
+if [ "$dir_explicit" = false ] && [ "$config_dir_seen" = false ]; then
+  temp_dir=$(cd -- "${TMPDIR:-/tmp}" 2>/dev/null && pwd -P) || die 'system temp directory is inaccessible'
+  save_dir="$temp_dir/clipref-$UID"
+  mkdir -p -- "$save_dir" || die 'could not create the default save directory'
+  private_directory "$save_dir" || die 'default save directory must be private, owned by you, and accessible'
+else
+  save_dir=$(cd -- "$save_dir" 2>/dev/null && pwd -P) || die 'save directory does not exist or is inaccessible'
+fi
+item_dir=$(mktemp -d "$save_dir/$timestamp-XXXXXX") || die 'could not create a save directory'
 file_path="$item_dir/$filename"
 
 # Remove only an incomplete file and the directory created by this invocation.
@@ -201,7 +212,7 @@ trap - EXIT INT TERM HUP
 record_history() {
   local record
   mkdir -p -- "$history_dir" || return 1
-  history_ready || return 1
+  private_directory "$history_dir" || return 1
   record=$(mktemp "$history_dir/.pending.XXXXXX") || return 1
   if printf '%s\0' "$file_path" > "$record" \
       && mv -- "$record" "$history_dir/entry.${record##*.pending.}"; then
@@ -210,5 +221,5 @@ record_history() {
   rm -f -- "$record"
   return 1
 }
-record_history || printf 'clipref: file saved, but history could not be recorded\n' >&2
+record_history || printf '%s: file saved, but history could not be recorded\n' "$command_name" >&2
 copy_saved_path
