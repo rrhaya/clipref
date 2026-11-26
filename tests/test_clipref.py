@@ -20,6 +20,7 @@ class CliprefTests(unittest.TestCase):
         self.stubs.mkdir()
         self.save_dir = self.root / "save directory"
         self.save_dir.mkdir()
+        self.default_dir = self.save_dir / f"clipref-{os.getuid()}"
         self.clipboard = self.root / "clipboard"
         self.clipboard.write_bytes(b"original clipboard\n")
         self.env = os.environ.copy()
@@ -42,8 +43,8 @@ class CliprefTests(unittest.TestCase):
         path.write_text("#!/bin/bash\n" + body + "\n")
         path.chmod(0o755)
 
-    def run_cli(self, *args, data=b"test input\n", clipboard=False):
-        command = ["/bin/bash", str(SCRIPT), *args]
+    def run_cli(self, *args, data=b"test input\n", clipboard=False, executable=SCRIPT):
+        command = ["/bin/bash", str(executable), *args]
         if clipboard:
             master, slave = pty.openpty()
             try:
@@ -70,10 +71,19 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual(self.clipboard.read_bytes(), os.fsencode(path))
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
         self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(path.parent.parent, self.default_dir.resolve())
+        self.assertEqual(self.default_dir.stat().st_mode & 0o777, 0o700)
 
     def test_preserves_missing_final_newline(self):
         path = self.saved_path(self.run_cli(data=b"no final newline"))
         self.assertEqual(path.read_bytes(), b"no final newline")
+
+    def test_pbe_and_clipref_share_history(self):
+        pbe = SCRIPT.with_name("pbe")
+        path = self.saved_path(self.run_cli("--no-copy", executable=pbe))
+        result = self.run_cli("last", "--no-copy")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, os.fsencode(path) + b"\n")
 
     def test_interrupted_input_removes_partial_file_and_preserves_clipboard(self):
         process = subprocess.Popen(["/bin/bash", str(SCRIPT)], stdin=subprocess.PIPE,
@@ -83,13 +93,13 @@ class CliprefTests(unittest.TestCase):
             process.stdin.write(b"partial log")
             process.stdin.flush()
             deadline = time.monotonic() + 3
-            while not any(path.stat().st_size for path in self.save_dir.glob("clipref.*/input.txt")):
+            while not any(path.stat().st_size for path in self.default_dir.glob("*/input.txt")):
                 self.assertLess(time.monotonic(), deadline, "input was not written")
                 time.sleep(0.01)
             os.killpg(process.pid, signal.SIGTERM)
             process.wait(timeout=3)
             self.assertNotEqual(process.returncode, 0)
-            self.assertEqual(list(self.save_dir.iterdir()), [])
+            self.assertEqual(list(self.default_dir.iterdir()), [])
             self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
             self.assertEqual(list((self.root / "state").glob("clipref/history/entry.*")), [])
         finally:
@@ -122,7 +132,7 @@ class CliprefTests(unittest.TestCase):
         result = self.run_cli("--clipboard")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b"could not read clipboard", result.stderr)
-        self.assertEqual(list(self.save_dir.iterdir()), [])
+        self.assertEqual(list(self.default_dir.iterdir()), [])
 
     def test_empty_input_preserves_clipboard_and_leaves_no_files(self):
         result = self.run_cli(data=b"")
@@ -130,7 +140,7 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertIn(b"input is empty", result.stderr)
         self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
-        self.assertEqual(list(self.save_dir.iterdir()), [])
+        self.assertEqual(list(self.default_dir.iterdir()), [])
 
     def test_no_copy_does_not_call_clipboard_commands(self):
         self.stub("pbcopy", "exit 91")
@@ -144,6 +154,8 @@ class CliprefTests(unittest.TestCase):
         path = self.saved_path(self.run_cli("--dir", str(target), "--ext", "log"))
         self.assertEqual(path.name, "input.log")
         self.assertEqual(path.parent.parent, target.resolve())
+        self.assertRegex(path.parent.name, r"^[0-9]{14}-[A-Za-z0-9]{6}$")
+        self.assertFalse(self.default_dir.exists())
 
     def test_physical_path_for_symlink_directory(self):
         link = self.root / "link"
@@ -169,11 +181,59 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual(list(self.save_dir.iterdir()), [])
 
     def test_runs_do_not_overwrite(self):
+        self.stub("date", '[[ "$1" = +%Y%m%d%H%M%S ]] || exit 1\nprintf "20261126170042\\n"')
         first = self.saved_path(self.run_cli(data=b"first"))
         second = self.saved_path(self.run_cli(data=b"second"))
         self.assertNotEqual(first, second)
         self.assertEqual(first.read_bytes(), b"first")
         self.assertEqual(second.read_bytes(), b"second")
+        for path in [first, second]:
+            self.assertRegex(path.parent.name, r"^20261126170042-[A-Za-z0-9]{6}$")
+
+    def test_moving_default_directory_keeps_custom_saves_and_legacy_paths(self):
+        legacy = self.save_dir / "clipref.XYZ123" / "input.txt"
+        legacy.parent.mkdir()
+        legacy.write_bytes(b"legacy")
+        history = self.root / "state" / "clipref" / "history"
+        history.mkdir(parents=True, mode=0o700)
+        (history / "entry.legacy").write_bytes(os.fsencode(legacy.resolve()) + b"\0")
+        result = self.run_cli("last", "--no-copy")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, os.fsencode(legacy.resolve()) + b"\n")
+
+        default = self.saved_path(self.run_cli("--no-copy"))
+        explicit = self.saved_path(self.run_cli("--dir", str(self.save_dir), "--no-copy"))
+        self.default_dir.rename(self.root / "moved")
+        self.assertFalse(default.exists())
+        self.assertTrue(explicit.is_file())
+        self.assertEqual(legacy.read_bytes(), b"legacy")
+        result = self.run_cli("list")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertCountEqual([line.split(b"\t", 1)[0] for line in result.stdout.splitlines()],
+                              [b"exists", b"exists", b"missing"])
+        recreated = self.saved_path(self.run_cli("--no-copy"))
+        self.assertEqual(recreated.parent.parent, self.default_dir.resolve())
+
+    def test_default_directory_rejects_symlink(self):
+        target = self.root / "unrelated"
+        target.mkdir(mode=0o700)
+        self.default_dir.symlink_to(target, target_is_directory=True)
+        result = self.run_cli()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"default save directory must be private", result.stderr)
+        self.assertEqual(list(target.iterdir()), [])
+        self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
+
+    @unittest.skipUnless(os.environ.get("GITHUB_ACTIONS") == "true",
+                         "requires access to the macOS runner's Trash")
+    def test_macos_trash_moves_default_directory(self):
+        path = self.saved_path(self.run_cli("--no-copy", executable=SCRIPT.with_name("pbe")))
+        result = subprocess.run(["/usr/bin/trash", str(self.default_dir)], capture_output=True,
+                                timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(path.exists())
+        self.assertTrue(self.run_cli("list").stdout.startswith(b"missing\t"))
+        self.saved_path(self.run_cli("--no-copy"))
 
     def test_copy_failure_keeps_file_and_reports_path(self):
         self.stub("pbcopy", "exit 1")
@@ -189,7 +249,7 @@ class CliprefTests(unittest.TestCase):
         result = self.run_cli(clipboard=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
-        self.assertEqual(list(self.save_dir.iterdir()), [])
+        self.assertEqual(list(self.default_dir.iterdir()), [])
 
     def test_file_creation_failure_preserves_clipboard(self):
         self.stub("mktemp", "exit 1")
@@ -198,7 +258,7 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertIn(b"could not create", result.stderr)
         self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
-        self.assertEqual(list(self.save_dir.iterdir()), [])
+        self.assertEqual(list(self.default_dir.iterdir()), [])
 
     def test_input_read_failure_removes_incomplete_file(self):
         self.stub("cat", "printf partial; exit 1")
@@ -207,7 +267,7 @@ class CliprefTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertIn(b"could not save input", result.stderr)
         self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
-        self.assertEqual(list(self.save_dir.iterdir()), [])
+        self.assertEqual(list(self.default_dir.iterdir()), [])
 
     def test_invalid_arguments_do_not_create_files(self):
         for args in [("--ext", "../log"), ("--ext", ""), ("--ext", ".log"),
@@ -326,6 +386,7 @@ class CliprefTests(unittest.TestCase):
         path = self.saved_path(self.run_cli())
         self.assertEqual(path.parent.parent, target.resolve())
         self.assertEqual(path.name, "input.log")
+        self.assertFalse(self.default_dir.exists())
         path = self.saved_path(self.run_cli("--dir", str(self.save_dir), "--ext", "txt"))
         self.assertEqual(path.parent.parent, self.save_dir.resolve())
         self.assertEqual(path.name, "input.txt")
@@ -393,7 +454,7 @@ class CliprefTests(unittest.TestCase):
         self.stub("pbpaste", "exit 1")
         result = self.run_cli("--version")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"clipref 0.2.0\n")
+        self.assertEqual(result.stdout, b"clipref 0.3.0\n")
         self.assertEqual(list(self.save_dir.iterdir()), [])
         self.assertEqual(self.clipboard.read_bytes(), b"original clipboard\n")
 

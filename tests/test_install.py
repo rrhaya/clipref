@@ -20,7 +20,7 @@ class InstallTests(unittest.TestCase):
         self.env.update(PATH=f"{self.stubs}:/usr/bin:/bin",
                         TMPDIR=str(self.root),
                         CLIPREF_TEST_SOURCE=str(ROOT / "bin" / "clipref"),
-                        CLIPREF_TEST_RELEASE="v0.2.0")
+                        CLIPREF_TEST_RELEASE="v0.3.0")
         self.stub("uname", "printf 'Darwin\\n'")
         self.stub("curl", '''
 [ "$1" = -fsSL ] || exit 1
@@ -48,18 +48,22 @@ cp "$CLIPREF_TEST_SOURCE" "$4"
         installed = self.target / "clipref"
         self.assertEqual(installed.read_bytes(), (ROOT / "bin" / "clipref").read_bytes())
         self.assertEqual(installed.stat().st_mode & 0o777, 0o755)
-        help_result = subprocess.run([str(installed), "--help"], capture_output=True, timeout=5)
-        self.assertEqual(help_result.returncode, 0)
-        self.assertIn(b"Usage: clipref", help_result.stdout)
-        version_result = subprocess.run([str(installed), "--version"], capture_output=True, timeout=5)
-        self.assertEqual(version_result.returncode, 0)
-        self.assertEqual(version_result.stdout, b"clipref 0.2.0\n")
+        self.assertEqual(os.readlink(self.target / "pbe"), "clipref")
+        for name in ["pbe", "clipref"]:
+            with self.subTest(name=name):
+                command = str(self.target / name)
+                help_result = subprocess.run([command, "--help"], capture_output=True, timeout=5)
+                self.assertEqual(help_result.returncode, 0, help_result.stderr)
+                self.assertIn(f"Usage: {name}".encode(), help_result.stdout)
+                version_result = subprocess.run([command, "--version"], capture_output=True, timeout=5)
+                self.assertEqual(version_result.returncode, 0, version_result.stderr)
+                self.assertEqual(version_result.stdout, f"{name} 0.3.0\n".encode())
         self.assertIn(b"Add this directory to PATH", result.stdout)
         self.assert_no_download_files()
 
     def test_selects_requested_release(self):
-        self.env["CLIPREF_TEST_RELEASE"] = "v0.3.0"
-        result = self.run_install("--version", "v0.3.0")
+        self.env["CLIPREF_TEST_RELEASE"] = "v0.2.0"
+        result = self.run_install("--version", "v0.2.0")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue((self.target / "clipref").is_file())
         self.assert_no_download_files()
@@ -113,7 +117,23 @@ cp "$CLIPREF_TEST_SOURCE" "$4"
         result = self.run_install()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(installed.read_bytes(), (ROOT / "bin" / "clipref").read_bytes())
+        result = self.run_install()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(os.readlink(self.target / "pbe"), "clipref")
         self.assertEqual(list(self.target.glob(".clipref-install.*")), [])
+        self.assert_no_download_files()
+
+    def test_does_not_replace_an_unrelated_pbe_command(self):
+        self.target.mkdir(parents=True)
+        installed = self.target / "clipref"
+        installed.write_bytes(b"old version")
+        existing = self.target / "pbe"
+        existing.write_bytes(b"unrelated executable")
+        result = self.run_install()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"pbe already exists", result.stderr)
+        self.assertEqual(existing.read_bytes(), b"unrelated executable")
+        self.assertEqual(installed.read_bytes(), b"old version")
         self.assert_no_download_files()
 
     def test_rejects_symlink_destination_without_changing_target(self):

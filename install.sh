@@ -5,14 +5,14 @@ usage() {
   cat <<'EOF'
 Usage: bash install.sh [--bin-dir DIRECTORY] [--version TAG]
 
-Install clipref on macOS. Default directory: ~/.local/bin
-Default release: v0.2.0. Tags must have the form vMAJOR.MINOR.PATCH.
+Install pbe and its clipref alias on macOS. Default directory: ~/.local/bin
+Default release: v0.3.0. Tags must have the form vMAJOR.MINOR.PATCH.
 EOF
 }
 die() { printf 'clipref installer: %s\n' "$*" >&2; exit 1; }
 
 bin_dir="$HOME/.local/bin"
-release_tag=v0.2.0
+release_tag=v0.3.0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --bin-dir)
@@ -54,8 +54,13 @@ IFS= read -r first_line < "$download"
 mkdir -p -- "$bin_dir"
 bin_dir=$(cd -- "$bin_dir" && pwd -P)
 destination="$bin_dir/clipref"
+pbe_path="$bin_dir/pbe"
 if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
   die 'destination must be a regular file; existing destination was not changed'
+fi
+if [ -e "$pbe_path" ] || [ -L "$pbe_path" ]; then
+  [ -L "$pbe_path" ] && [ "$(readlink "$pbe_path")" = clipref ] \
+    || die 'pbe already exists in the install directory; existing installation was not changed'
 fi
 staged_file=$(mktemp "$bin_dir/.clipref-install.XXXXXX")
 install -m 755 "$download" "$staged_file" \
@@ -63,9 +68,13 @@ install -m 755 "$download" "$staged_file" \
 mv -f -- "$staged_file" "$destination" \
   || die 'replacement failed; existing installation was not changed'
 staged_file=
-printf 'Installed: %s/clipref\n' "$bin_dir"
+if [ ! -L "$pbe_path" ]; then
+  ln -sh clipref "$pbe_path" || [ "$(readlink "$pbe_path")" = clipref ] \
+    || die 'clipref was installed, but the pbe link could not be created'
+fi
+printf 'Installed: %s/pbe and %s/clipref\n' "$bin_dir" "$bin_dir"
 case ":$PATH:" in
-  *":$bin_dir:"*) printf 'Run: clipref --help\n' ;;
+  *":$bin_dir:"*) printf 'Run: pbe --help\n' ;;
   *)
     printf 'Add this directory to PATH: %s\n' "$bin_dir"
     printf 'Add to ~/.zshrc:\n'
