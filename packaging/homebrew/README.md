@@ -1,23 +1,24 @@
 # Homebrew formula
 
-The formula pins the published v0.2.0 archive. It installs only the Bash command.
+The formula pins the published v0.3.0 archive and installs both `pbe` and `clipref`.
 
 ```sh
 brew install rrhaya/tap/clipref
+pbe --version
 brew upgrade clipref
 brew uninstall clipref
 ```
 
 Saved files are kept after uninstalling. If you also used `install.sh`, run
-`command -v clipref` to check which installation your shell uses.
+`command -v pbe` to check which installation your shell uses.
 
 ## Release updates
 
 After publishing a new release, download its archive and generate the formula:
 
 ```sh
-curl -fL https://github.com/rrhaya/clipref/archive/refs/tags/v0.2.0.tar.gz -o /tmp/clipref-v0.2.0.tar.gz
-bash packaging/homebrew/prepare-formula.sh v0.2.0 /tmp/clipref-v0.2.0.tar.gz
+curl -fL https://github.com/rrhaya/clipref/archive/refs/tags/v0.3.0.tar.gz -o /tmp/clipref-v0.3.0.tar.gz
+bash packaging/homebrew/prepare-formula.sh v0.3.0 /tmp/clipref-v0.3.0.tar.gz
 ```
 
 Review the output and copy it to `Formula/clipref.rb` in `rrhaya/homebrew-tap`.
