@@ -1,4 +1,4 @@
-# Homebrew formula
+# pbe on Homebrew
 
 The formula pins the published v0.3.0 archive and installs both `pbe` and `clipref`.
 

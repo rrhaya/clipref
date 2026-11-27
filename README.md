@@ -1,9 +1,9 @@
-# clipref
+# pbe
 
-Save clipboard text to a local file and copy its absolute path.
+pbe (Pasteboard Export) saves clipboard text to a local file and copies its absolute path.
 For logs and long text you want an AI coding agent to read.
 
-Starting with v0.3.0, run the command as `pbe`. The `clipref` name also works.
+Existing scripts and shortcuts can use the `clipref` command.
 
 [日本語](README.ja.md)
 
@@ -141,7 +141,6 @@ Unknown keys, duplicate keys, and invalid values are errors.
 ## Files
 
 For keyboard access, see [macOS Shortcut setup](docs/shortcuts.md).
-Requires v0.2.0 or later.
 
 In v0.3.0, each run creates a path like `20261126170042-Ab3xY7/input.txt`. The first 14 digits
 give the local date and time when the save began, down to the second. The random
