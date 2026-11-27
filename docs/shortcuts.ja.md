@@ -1,9 +1,9 @@
-# キーボードショートカットから使う
+# キーボードショートカットで pbe を使う
 
 [English](shortcuts.md)
 
-macOSのショートカットアプリと、clipref v0.2.0以降が必要です。
-インストール後に、`clipref --help`で確認してください。
+pbe v0.3.0 以降をインストールし、`pbe --help` で `--clipboard` が使えることを確認します。
+v0.2.0 を使っている場合は、例の実行ファイル名を `clipref` に置き換えてください。
 
 ショートカットアプリの「設定 → 詳細」で「スクリプトの実行を許可」をONにします。
 これはアプリ全体の設定です。ショートカットからスクリプトを実行する場合に有効にし、
@@ -11,12 +11,12 @@ macOSのショートカットアプリと、clipref v0.2.0以降が必要です�
 「スクリプティングアクションが無効」と表示された場合は、この設定を確認します。
 [Appleの設定手順](https://support.apple.com/ja-jp/guide/shortcuts-mac/apdfeb05586f/mac)も参照してください。
 
-1. ショートカットアプリで「cliprefで保存」というショートカットを作ります。
+1. ショートカットアプリで「pbe で保存」というショートカットを作ります。
 2. 「シェルスクリプトを実行」アクションを追加し、シェルを`/bin/zsh`（macOS標準）または`/bin/bash`にします。
 3. 標準のインストール先なら、次のスクリプトを入力します。
 
 ```sh
-"$HOME/.local/bin/clipref" --clipboard
+"$HOME/.local/bin/pbe" --clipboard
 ```
 
 4. ショートカットの詳細を開き、「キーボードショートカットを追加」でキーを割り当てます。
@@ -26,20 +26,20 @@ macOSのショートカットアプリと、clipref v0.2.0以降が必要です�
 別の場所にインストールした場合は実行ファイルのパスを変更してください。
 ショートカットはターミナルのシェル設定を読み込まないため、`PATH`には依存しません。
 
-Homebrewで導入した場合は、`command -v clipref`でパスを確認し、
-上の実行ファイルを置き換えてください。Apple Siliconでは通常`/opt/homebrew/bin/clipref`、
-Intel Macでは通常`/usr/local/bin/clipref`です。
+Homebrewで導入した場合は、`command -v pbe`でパスを確認し、
+上の実行ファイルを置き換えてください。Apple Siliconでは通常`/opt/homebrew/bin/pbe`、
+Intel Macでは通常`/usr/local/bin/pbe`です。
 
 保存先を固定したい場合は、ターミナルで一度ディレクトリを作ります。
 
 ```sh
-mkdir -p "$HOME/Documents/clipref"
+mkdir -p "$HOME/Documents/pbe"
 ```
 
 アクションのスクリプトを次のように変更します。
 
 ```sh
-"$HOME/.local/bin/clipref" --clipboard --dir "$HOME/Documents/clipref" --ext log
+"$HOME/.local/bin/pbe" --clipboard --dir "$HOME/Documents/pbe" --ext log
 ```
 
 保存に成功してからクリップボードを変更します。空のテキストやアクセスできない保存先は
@@ -49,7 +49,7 @@ mkdir -p "$HOME/Documents/clipref"
 キーが別のアプリで使われていると実行できない場合があります。まずアプリ内の実行ボタンで
 確認し、必要に応じて別のキーを割り当ててください。
 
-macOSでHomebrew版と`/bin/zsh`を使い、ショートカットの実行と
+macOSでHomebrew版の `clipref` と `/bin/zsh` を使い、ショートカットの実行と
 Control＋Option＋Command＋Cからの起動を確認しました。
 ダミーのログがそのまま保存され、絶対パスがコピーされ、ファイル権限が`600`になることも確認済みです。
 キーは自分のMacで未使用の組み合わせを選んでください。上記の例も他のアプリと競合する場合があります。

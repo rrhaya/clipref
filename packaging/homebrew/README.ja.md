@@ -1,4 +1,4 @@
-# Homebrew Formula
+# pbe の Homebrew Formula
 
 公開済みの v0.3.0 アーカイブを使い、`pbe` と `clipref` をインストールします。
 
@@ -14,7 +14,7 @@ brew uninstall clipref
 
 ## 公開・検証手順
 
-リリース公開後に、clipref のチェックアウトからタグ付きアーカイブで Formula を生成します。
+リリース公開後に、このリポジトリのチェックアウトからタグ付きアーカイブで Formula を生成します。
 
 ```sh
 curl -fL https://github.com/rrhaya/clipref/archive/refs/tags/v0.3.0.tar.gz -o /tmp/clipref-v0.3.0.tar.gz
